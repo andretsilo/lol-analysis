@@ -1,0 +1,430 @@
+---
+title: "League of Legends EUW Games Dataset analysis"
+author: "Andrea Tsilogiannnis"
+format: html
+---
+
+## Introduction
+
+League of Legends (LoL) is a multiplayer online battle arena (MOBA) developed by Riot Games. Two teams of five players compete on a map called Summoner's Rift, each starting from opposite corners. The goal is to destroy the enemy team's Nexus, the core structure at the heart of their base.
+
+![Summoner's Rift](map.jpeg){width=60% fig-align="center"}
+
+Matches typically last 25–35 minutes and revolve around three pillars: **gold**, **objectives**, and **kills**.
+
+**Gold** is the primary resource. Players earn it by killing minions (CS), destroying structures, and eliminating enemy champions. Gold is spent on items that increase a champion's power, making it the main driver of in-game strength.
+
+**Kills** eliminate enemy champions, denying them gold and experience while rewarding the killer. Beyond the direct advantage, kills often open windows to take objectives or push structures.
+
+**Objectives** are neutral monsters and structures that provide team-wide buffs:
+
+- **Dragon**: spawns in the river. Each kill grants a stacking elemental buff. Killing four grants **Drake Soul**, a permanent powerful bonus.
+- **Elder Dragon**: spawns after a team has Drake Soul. Killing it grants a devastating temporary buff that can decide teamfights.
+- **Baron Nashor**: the most powerful neutral monster. Killing it empowers the team's minions for 3 minutes, enabling a strong push to end the game.
+- **Rift Herald**: an early-game objective that drops an item used to destroy turrets, accelerating map control.
+
+## Data Loading
+
+Downloads the dataset from Kaggle if the local `data/` folder does not exist, then reads JSON match files.
+
+```{r}
+library(jsonlite)
+library(gt)
+library(tidyverse)
+
+data_dir <- file.path(getwd(), "data", "matches_raw_euw2_ranked", "matches_raw")
+
+if (!dir.exists(data_dir)) {
+  kaggle_creds <- fromJSON(".kaggle/kaggle.json")
+  Sys.setenv(KAGGLE_USERNAME = kaggle_creds$username, KAGGLE_KEY = kaggle_creds$key)
+  dl_dir <- file.path(getwd(), "data")
+  dir.create(dl_dir, recursive = TRUE, showWarnings = FALSE)
+  system(paste("kaggle datasets download -d omaracornejo/matches-raw-euw --unzip -p", shQuote(dl_dir)))
+}
+
+load_matches <- function(folder_path, max_files = NULL) {
+  json_files <- list.files(folder_path, pattern = "\\.json$", full.names = TRUE, recursive = TRUE)
+  if (length(json_files) == 0) stop("No JSON files found in: ", folder_path)
+  if (!is.null(max_files)) json_files <- head(json_files, max_files)
+
+  n <- length(json_files)
+  raw <- vector("list", n)
+  for (i in seq_len(n)) {
+    raw[[i]] <- tryCatch(fromJSON(json_files[i], simplifyVector = FALSE), error = function(e) NULL)
+  }
+  raw <- compact(raw)
+
+  participants_list <- unlist(lapply(raw, \(d) {
+    matchId <- d$metadata$matchId
+    lapply(d$info$participants, \(p) list(
+      matchId                     = matchId,
+      gameId                      = d$info$gameId,
+      gameDuration                = d$info$gameDuration,
+      gameMode                    = d$info$gameMode,
+      participantId               = p$participantId,
+      puuid                       = p$puuid,
+      summonerName                = p$riotIdGameName,
+      championName                = p$championName,
+      teamId                      = p$teamId,
+      teamPosition                = p$teamPosition,
+      win                         = p$win,
+      kills                       = p$kills,
+      deaths                      = p$deaths,
+      assists                     = p$assists,
+      champLevel                  = p$champLevel,
+      totalDamageDealtToChampions = p$totalDamageDealtToChampions,
+      goldEarned                  = p$goldEarned,
+      totalMinionsKilled          = p$totalMinionsKilled,
+      visionScore                 = p$visionScore,
+      summonerLevel               = p$summonerLevel
+    ))
+  }), recursive = FALSE)
+  df <- bind_rows(participants_list)
+
+  bans <- bind_rows(lapply(raw, \(d) {
+    matchId <- d$metadata$matchId
+    bind_rows(lapply(d$info$teams, \(t)
+      bind_rows(lapply(t$bans, \(b) list(championId = b$championId, pickTurn = b$pickTurn)))
+    )) |> mutate(matchId = matchId)
+  }))
+
+  team_objectives <- bind_rows(lapply(raw, \(d) {
+    matchId <- d$metadata$matchId
+    bind_rows(lapply(d$info$teams, \(t) {
+      team_participants <- d$info$participants[sapply(d$info$participants, \(p) p$teamId) == t$teamId]
+      list(
+        matchId     = matchId,
+        teamId      = t$teamId,
+        win         = t$win,
+        dragonKills = t$objectives$dragon$kills,
+        baronKills  = t$objectives$baron$kills,
+        heraldKills = t$objectives$riftHerald$kills,
+        elderKills  = max(sapply(team_participants, \(p) as.integer(p$challenges$teamElderDragonKills %||% 0L)))
+      )
+    }))
+  }))
+
+  team_gold <- df |> summarise(teamGold = sum(goldEarned), .by = c(matchId, teamId))
+
+  result <- df |>
+    left_join(team_gold, by = c("matchId", "teamId")) |>
+    left_join(rename(team_gold, enemyTeamId = teamId, enemyGold = teamGold), by = "matchId", relationship = "many-to-many") |>
+    filter(teamId != enemyTeamId) |>
+    mutate(goldDiff = (teamGold - enemyGold) / 1000) |>
+    select(-enemyTeamId, -enemyGold, -teamGold)
+
+  list(matches = result, bans = bans, team_objectives = team_objectives)
+}
+
+kaggle_data <- load_matches(data_dir, max_files = 20000)
+matches          <- kaggle_data$matches
+bans             <- kaggle_data$bans
+team_objectives  <- kaggle_data$team_objectives
+head(matches[-c(2, 16)]) |>
+  gt()
+```
+
+## Exploratory Data Analysis
+
+The dataset does not include per-player rank/elo. Summoner level is used as a proxy for player experience. Game duration is in seconds and converted to minutes.
+
+### Game Duration
+
+Most ranked games cluster between 25 and 35 minutes. Short games (under 20 min) typically indicate early surrenders, while games beyond 40 minutes are late-game stalemates.
+
+```{r}
+chart <- matches |>
+  distinct(matchId, gameDuration) |>
+  mutate(minutes = gameDuration / 60) |>
+  ggplot(aes(x = minutes)) +
+  geom_histogram(bins = 60, fill = "#4C72B0", color = "white") +
+  theme_minimal(base_size = 14) +
+  labs(title = "Game Duration Distribution", x = "Duration (minutes)", y = "Count")
+print(chart)
+```
+
+### Player Experience Distribution
+
+Summoner level is a rough proxy for hours played. A concentration in lower buckets suggests many newer players in the dataset; a spread toward higher levels indicates a mix of veterans.
+
+```{r}
+matches |>
+  mutate(
+    level_bucket = cut(summonerLevel, breaks = c(0, 100, 200, 300, 500, 750, Inf),
+                       labels = c("1-100", "101-200", "201-300", "301-500", "501-750", "750+"))
+  ) |>
+  count(level_bucket) |>
+  mutate(level_bucket = fct_rev(level_bucket)) |>
+  ggplot(aes(y = level_bucket, x = n, fill = level_bucket)) +
+  geom_col(fill = "#4C72B0") +
+  geom_text(aes(label = n), hjust = -0.2, size = 4) +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.15))) +
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "none") +
+  labs(title = "Player Distribution by Summoner Level", y = "Summoner Level", x = "Players")
+```
+
+### KDA Distribution
+
+KDA (kills + assists / deaths) measures individual combat performance. The distribution is right-skewed — most players sit between 1 and 5, with a long tail of outliers who either stomped or played a low-death support role.
+
+```{r}
+matches |>
+  mutate(kda = (kills + assists) / pmax(deaths, 1)) |>
+  ggplot(aes(x = kda)) +
+  geom_histogram(bins = 80, fill = "#4C72B0", color = "white") +
+  scale_x_continuous(limits = c(0, 15), oob = scales::squish, expand = expansion(mult = c(0, 0.15))) +
+  theme_minimal(base_size = 14) +
+  labs(title = "KDA Distribution", x = "KDA", y = "Players")
+```
+
+## Objective Impact
+Win rate for teams that secured each major objective. A value above 50% indicates the objective is associated with winning.
+
+```{r}
+team_objectives |>
+  pivot_longer(c(dragonKills, baronKills, elderKills, heraldKills),
+               names_to = "objective", values_to = "kills") |>
+  mutate(objective = recode(objective,
+    dragonKills = "Drake Soul", baronKills = "Baron",
+    elderKills  = "Elder Dragon", heraldKills = "Rift Herald"
+  )) |>
+  filter(if_else(objective == "Drake Soul", kills >= 4, kills >= 1)) |>
+  group_by(objective) |>
+  summarise(win_rate = mean(win), .groups = "drop") |>
+  mutate(objective = fct_reorder(objective, win_rate)) |>
+  ggplot(aes(x = win_rate, y = objective)) +
+  geom_col(width = 0.5, fill = "#4C72B0") +
+  geom_text(aes(label = scales::percent(win_rate, accuracy = 1)), hjust = -0.2, size = 4.5) +
+  scale_x_continuous(labels = scales::percent, limits = c(0, 1)) +
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "none") +
+  labs(title = "Win Rate When Securing Objective",
+       subtitle = "Among games where the team secured that objective",
+       x = "Win Rate", y = NULL)
+```
+
+## Objective Secure Rate by Side
+
+For each objective, how often did blue side vs red side secure it across all games.
+
+```{r}
+team_objectives |>
+  mutate(side = ifelse(teamId == 100, "Blue Side", "Red Side")) |>
+  pivot_longer(c(dragonKills, baronKills, elderKills, heraldKills),
+               names_to = "objective", values_to = "kills") |>
+  mutate(objective = recode(objective,
+    dragonKills = "Drake Soul", baronKills = "Baron",
+    elderKills  = "Elder Dragon", heraldKills = "Rift Herald"
+  )) |>
+  mutate(secured = if_else(objective == "Drake Soul", kills >= 4, kills >= 1)) |>
+  group_by(objective, side) |>
+  summarise(rate = mean(secured), .groups = "drop") |>
+  mutate(objective = factor(objective, levels = c("Drake Soul", "Baron", "Elder Dragon", "Rift Herald"))) |>
+  ggplot(aes(x = rate, y = objective, fill = side)) +
+  geom_col(position = "dodge", width = 0.6) +
+  geom_text(aes(label = scales::percent(rate, accuracy = 0.1)),
+            position = position_dodge(width = 0.6), hjust = -0.2, size = 3.5) +
+  scale_fill_manual(values = c("Blue Side" = "#4C72B0", "Red Side" = "#C44E52")) +
+  scale_x_continuous(labels = scales::percent, limits = c(0, 1)) +
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "top") +
+  labs(title = "Objective Secure Rate by Side",
+       subtitle = "% of all games where each side secured the objective",
+       x = "Secure Rate", y = NULL, fill = NULL)
+```
+
+## Broken Champions
+
+Champions with high win rate and high pick rate are likely overpowered. Dashed line marks the average pick rate; only champions with ≥10 games and >50% win rate are shown.
+
+```{r}
+total_matches <- n_distinct(matches$matchId)
+
+champion_stats <- matches |>
+  group_by(championName) |>
+  summarise(games = n(), win_rate = mean(as.numeric(win)), .groups = "drop") |>
+  mutate(pick_rate = games / total_matches)
+
+champion_stats |>
+  filter(games >= 10, win_rate > 0.5) |>
+  ggplot(aes(x = pick_rate, y = win_rate, label = ifelse(win_rate > 0.52 & pick_rate > 0.05, championName, ""))) +
+  geom_point(aes(color = win_rate), size = 3, alpha = 0.8) +
+  ggrepel::geom_text_repel(
+    size = 3.5,
+    max.overlaps = 20,
+    box.padding = 0.4,
+    point.padding = 0.3,
+    segment.color = "gray60",
+    segment.size = 0.3,
+    min.segment.length = 0.2
+  ) +
+  scale_color_gradient(low = "red", high = "blue") +
+  scale_x_continuous(labels = scales::percent) +
+  scale_y_continuous(labels = scales::percent) +
+  geom_vline(xintercept = mean(champion_stats$pick_rate), linetype = "dashed", color = "gray40") +
+  theme_minimal(base_size = 14) +
+  theme(aspect.ratio = 1) +
+  labs(title = "Champion Pick Rate vs Win Rate", x = "Pick Rate", y = "Win Rate", color = "Win Rate")
+```
+
+## Key Variables by Outcome
+
+ECDF of gold, vision, and kills difference split by match outcome. The wider the gap between the two curves, the stronger that variable predicts winning.
+
+```{r}
+team_stats <- matches |>
+  group_by(matchId, teamId) |>
+  summarise(teamVision = sum(visionScore), teamKills = sum(kills), .groups = "drop")
+
+matches <- matches |>
+  left_join(
+    team_stats |>
+      left_join(team_stats |> rename(enemyTeamId = teamId, enemyVision = teamVision, enemyKills = teamKills),
+                by = "matchId", relationship = "many-to-many") |>
+      filter(teamId != enemyTeamId) |>
+      mutate(visionDiff = teamVision - enemyVision, killsDiff = teamKills - enemyKills) |>
+      select(matchId, teamId, visionDiff, killsDiff),
+    by = c("matchId", "teamId")
+  )
+
+ecdf_data <- bind_rows(
+  matches |> distinct(matchId, teamId, .keep_all = TRUE) |> mutate(variable = "Gold Difference",          x = goldDiff * 1000),
+  matches |> distinct(matchId, teamId, .keep_all = TRUE) |> mutate(variable = "Vision Score Difference",  x = visionDiff),
+  matches |> distinct(matchId, teamId, .keep_all = TRUE) |> mutate(variable = "Kills Difference",         x = killsDiff)
+) |>
+  mutate(outcome = ifelse(win, "Win", "Loss"))
+
+gold_ks <- with(
+  ecdf_data |> filter(variable == "Gold Difference"),
+  ks.test(x[outcome == "Win"], x[outcome == "Loss"])
+)
+gold_ks_label <- tibble(
+  variable = "Gold Difference",
+  label    = paste0("KS D = ", round(gold_ks$statistic, 3), ", p < 0.001")
+)
+
+ecdf_data |>
+  ggplot(aes(x = x, color = outcome)) +
+  stat_ecdf(linewidth = 1.2) +
+  scale_color_manual(values = c("Win" = "#4C72B0", "Loss" = "#C44E52")) +
+  scale_x_continuous(labels = \(x) ifelse(abs(x) >= 1000, paste0(x / 1000, "k"), as.character(x))) +
+  scale_y_continuous(labels = scales::percent) +
+  facet_wrap(~variable, scales = "free_x") +
+  theme_minimal(base_size = 11) +
+  theme(strip.text = element_text(size = 11), aspect.ratio = 1) +
+  labs(title = "ECDF of Key Variables by Outcome", x = NULL, y = "Cumulative Proportion", color = NULL)
+```
+
+To test whether the separation between the Win and Loss gold difference curves is statistically significant, a two-sample Kolmogorov-Smirnov test was applied. The KS test is non-parametric and measures the maximum distance between two empirical cumulative distribution functions, making it well suited for this data since it requires no normality assumption.
+
+```{r}
+cat("KS test — Gold Difference (Win vs Loss)\n")
+cat("D =", round(gold_ks$statistic, 3), "\n")
+cat("p-value =", format(gold_ks$p.value, scientific = TRUE, digits = 3), "\n")
+```
+
+A D statistic close to 1 indicates near-complete separation between the two distributions, while a value near 0 indicates they are indistinguishable. The near-zero p-value confirms the separation visible in the chart is not due to chance — teams with a positive gold difference win at a dramatically higher rate.
+
+## Personal Match History
+
+Fetches all ranked solo/duo games from the Riot API (EUW) for the account **tsilo#EUW**.
+
+```{r}
+library(httr)
+
+riot_get <- function(url) {
+  resp <- GET(url, add_headers("X-Riot-Token" = fromJSON(".kaggle/riot.json")$key))
+  if (status_code(resp) != 200) stop("Riot API error: ", status_code(resp))
+  content(resp, as = "parsed")
+}
+
+puuid <- riot_get("https://europe.api.riotgames.com/riot/account/v1/accounts/by-riot-id/tsilo/EUW")$puuid
+
+match_ids <- {
+  ids <- c(); start <- 0
+  repeat {
+    batch <- unlist(riot_get(paste0(
+      "https://europe.api.riotgames.com/lol/match/v5/matches/by-puuid/", puuid,
+      "/ids?queue=420&start=", start, "&count=100"
+    )))
+    ids <- c(ids, batch); Sys.sleep(1.2)
+    if (length(batch) < 100) break
+    start <- start + 100
+  }
+  ids
+}
+
+n <- length(match_ids)
+raw_matches <- vector("list", n)
+for (i in seq_len(n)) {
+  raw_matches[[i]] <- tryCatch({
+    d <- riot_get(paste0("https://europe.api.riotgames.com/lol/match/v5/matches/", match_ids[i]))
+    Sys.sleep(0.1)
+    p <- d$info$participants[[which(sapply(d$info$participants, \(x) x$puuid) == puuid)]]
+    my_team   <- p$teamId
+    my_gold   <- sum(sapply(Filter(\(x) x$teamId == my_team, d$info$participants), \(x) x$goldEarned))
+    opp_gold  <- sum(sapply(Filter(\(x) x$teamId != my_team, d$info$participants), \(x) x$goldEarned))
+    my_kills  <- sum(sapply(Filter(\(x) x$teamId == my_team, d$info$participants), \(x) x$kills))
+    opp_kills <- sum(sapply(Filter(\(x) x$teamId != my_team, d$info$participants), \(x) x$kills))
+    tibble(matchId = match_ids[i],
+           date         = as.POSIXct(d$info$gameStartTimestamp / 1000, origin = "1970-01-01"),
+           championName = p$championName, win = p$win,
+           kills = p$kills, deaths = p$deaths, assists = p$assists,
+           kda          = (p$kills + p$assists) / max(p$deaths, 1),
+           goldEarned   = p$goldEarned, visionScore = p$visionScore,
+           gameDuration = d$info$gameDuration / 60,
+           goldDiff     = (my_gold - opp_gold) / 1000,
+           killsDiff    = my_kills - opp_kills)
+  }, error = function(e) NULL)
+}
+tsilo_matches <- bind_rows(compact(raw_matches))
+
+head(tsilo_matches) |>
+  gt()
+```
+
+### KDA
+
+tsilo's KDA distribution across all ranked games, with the average marked.
+
+```{r}
+tsilo_matches |>
+  ggplot(aes(x = kda)) +
+  geom_histogram(bins = 40, fill = "#4C72B0", color = "white") +
+  geom_vline(xintercept = mean(tsilo_matches$kda), color = "#C44E52", linewidth = 1.2, linetype = "dashed") +
+  annotate("text", x = mean(tsilo_matches$kda), y = Inf,
+           label = paste0("avg ", round(mean(tsilo_matches$kda), 2)),
+           color = "#C44E52", hjust = -0.1, vjust = 1.5, size = 4) +
+  scale_x_continuous(limits = c(0, 15), oob = scales::squish) +
+  theme_minimal(base_size = 14) +
+  labs(title = "tsilo — KDA Distribution", x = "KDA", y = "Games")
+```
+
+### Gold & Kills Difference
+
+ECDF of gold and kills difference by outcome for tsilo's games. The green dashed line marks tsilo's average across all games.
+
+```{r}
+tsilo_avgs <- tibble(
+  variable = c("Gold Difference (k)", "Kills Difference"),
+  x_avg    = c(mean(tsilo_matches$goldDiff), mean(tsilo_matches$killsDiff))
+)
+
+bind_rows(
+  tsilo_matches |> mutate(variable = "Gold Difference (k)", x = goldDiff),
+  tsilo_matches |> mutate(variable = "Kills Difference",    x = killsDiff)
+) |>
+  mutate(outcome = ifelse(win, "Win", "Loss")) |>
+  ggplot(aes(x = x, color = outcome)) +
+  stat_ecdf(linewidth = 1.2) +
+  geom_vline(data = tsilo_avgs, aes(xintercept = x_avg), color = "#2ca02c", linewidth = 1.2, linetype = "dashed") +
+  geom_text(data = tsilo_avgs, aes(x = x_avg, y = 0.05, label = paste0("tsilo avg ", round(x_avg, 1))),
+            color = "#2ca02c", hjust = -0.1, size = 3.5, inherit.aes = FALSE) +
+  scale_color_manual(values = c("Win" = "#4C72B0", "Loss" = "#C44E52")) +
+  scale_y_continuous(labels = scales::percent) +
+  facet_wrap(~variable, scales = "free_x") +
+  theme_minimal(base_size = 11) +
+  theme(strip.text = element_text(size = 11), aspect.ratio = 1) +
+  labs(title = "tsilo — Gold & Kills Difference by Outcome", x = NULL, y = "Cumulative Proportion", color = NULL)
+```

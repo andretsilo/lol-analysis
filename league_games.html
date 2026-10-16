@@ -1,0 +1,2193 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.8.26">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Andrea Tsilogiannnis">
+
+<title>League of Legends EUW Games Dataset analysis</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="league_games_files/libs/clipboard/clipboard.min.js"></script>
+<script src="league_games_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="league_games_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="league_games_files/libs/quarto-html/axe/axe-check.js" type="module"></script>
+<script src="league_games_files/libs/quarto-html/popper.min.js"></script>
+<script src="league_games_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="league_games_files/libs/quarto-html/anchor.min.js"></script>
+<link href="league_games_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="league_games_files/libs/quarto-html/quarto-syntax-highlighting-587c61ba64f3a5504c4d52d930310e48.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="league_games_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="league_games_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="league_games_files/libs/bootstrap/bootstrap-9e3ffae467580fdb927a41352e75a2e0.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="fullcontent quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">League of Legends EUW Games Dataset analysis</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Andrea Tsilogiannnis </p>
+          </div>
+  </div>
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="introduction" class="level2">
+<h2 class="anchored" data-anchor-id="introduction">Introduction</h2>
+<p>League of Legends (LoL) is a multiplayer online battle arena (MOBA) developed by Riot Games. Two teams of five players compete on a map called Summoner’s Rift, each starting from opposite corners. The goal is to destroy the enemy team’s Nexus, the core structure at the heart of their base.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="map.jpeg" class="img-fluid figure-img" style="width:60.0%"></p>
+<figcaption>Summoner’s Rift</figcaption>
+</figure>
+</div>
+<p>Matches typically last 25–35 minutes and revolve around three pillars: <strong>gold</strong>, <strong>objectives</strong>, and <strong>kills</strong>.</p>
+<p><strong>Gold</strong> is the primary resource. Players earn it by killing minions (CS), destroying structures, and eliminating enemy champions. Gold is spent on items that increase a champion’s power, making it the main driver of in-game strength.</p>
+<p><strong>Kills</strong> eliminate enemy champions, denying them gold and experience while rewarding the killer. Beyond the direct advantage, kills often open windows to take objectives or push structures.</p>
+<p><strong>Objectives</strong> are neutral monsters and structures that provide team-wide buffs:</p>
+<ul>
+<li><strong>Dragon</strong>: spawns in the river. Each kill grants a stacking elemental buff. Killing four grants <strong>Drake Soul</strong>, a permanent powerful bonus.</li>
+<li><strong>Elder Dragon</strong>: spawns after a team has Drake Soul. Killing it grants a devastating temporary buff that can decide teamfights.</li>
+<li><strong>Baron Nashor</strong>: the most powerful neutral monster. Killing it empowers the team’s minions for 3 minutes, enabling a strong push to end the game.</li>
+<li><strong>Rift Herald</strong>: an early-game objective that drops an item used to destroy turrets, accelerating map control.</li>
+</ul>
+</section>
+<section id="data-loading" class="level2">
+<h2 class="anchored" data-anchor-id="data-loading">Data Loading</h2>
+<p>Downloads the dataset from Kaggle if the local <code>data/</code> folder does not exist, then reads JSON match files.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(jsonlite)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(gt)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: package 'gt' was built under R version 4.5.2</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
+✔ dplyr     1.1.4     ✔ readr     2.1.5
+✔ forcats   1.0.1     ✔ stringr   1.5.2
+✔ ggplot2   4.0.0     ✔ tibble    3.3.0
+✔ lubridate 1.9.4     ✔ tidyr     1.3.1
+✔ purrr     1.1.0     
+── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+✖ dplyr::filter()  masks stats::filter()
+✖ purrr::flatten() masks jsonlite::flatten()
+✖ dplyr::lag()     masks stats::lag()
+ℹ Use the conflicted package (&lt;http://conflicted.r-lib.org/&gt;) to force all conflicts to become errors</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>data_dir <span class="ot">&lt;-</span> <span class="fu">file.path</span>(<span class="fu">getwd</span>(), <span class="st">"data"</span>, <span class="st">"matches_raw_euw2_ranked"</span>, <span class="st">"matches_raw"</span>)</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">dir.exists</span>(data_dir)) {</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>  kaggle_creds <span class="ot">&lt;-</span> <span class="fu">fromJSON</span>(<span class="st">".kaggle/kaggle.json"</span>)</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">Sys.setenv</span>(<span class="at">KAGGLE_USERNAME =</span> kaggle_creds<span class="sc">$</span>username, <span class="at">KAGGLE_KEY =</span> kaggle_creds<span class="sc">$</span>key)</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>  dl_dir <span class="ot">&lt;-</span> <span class="fu">file.path</span>(<span class="fu">getwd</span>(), <span class="st">"data"</span>)</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">dir.create</span>(dl_dir, <span class="at">recursive =</span> <span class="cn">TRUE</span>, <span class="at">showWarnings =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">system</span>(<span class="fu">paste</span>(<span class="st">"kaggle datasets download -d omaracornejo/matches-raw-euw --unzip -p"</span>, <span class="fu">shQuote</span>(dl_dir)))</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>load_matches <span class="ot">&lt;-</span> <span class="cf">function</span>(folder_path, <span class="at">max_files =</span> <span class="cn">NULL</span>) {</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>  json_files <span class="ot">&lt;-</span> <span class="fu">list.files</span>(folder_path, <span class="at">pattern =</span> <span class="st">"</span><span class="sc">\\</span><span class="st">.json$"</span>, <span class="at">full.names =</span> <span class="cn">TRUE</span>, <span class="at">recursive =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="fu">length</span>(json_files) <span class="sc">==</span> <span class="dv">0</span>) <span class="fu">stop</span>(<span class="st">"No JSON files found in: "</span>, folder_path)</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="sc">!</span><span class="fu">is.null</span>(max_files)) json_files <span class="ot">&lt;-</span> <span class="fu">head</span>(json_files, max_files)</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>  n <span class="ot">&lt;-</span> <span class="fu">length</span>(json_files)</span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>  raw <span class="ot">&lt;-</span> <span class="fu">vector</span>(<span class="st">"list"</span>, n)</span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (i <span class="cf">in</span> <span class="fu">seq_len</span>(n)) {</span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>    raw[[i]] <span class="ot">&lt;-</span> <span class="fu">tryCatch</span>(<span class="fu">fromJSON</span>(json_files[i], <span class="at">simplifyVector =</span> <span class="cn">FALSE</span>), <span class="at">error =</span> <span class="cf">function</span>(e) <span class="cn">NULL</span>)</span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a>  raw <span class="ot">&lt;-</span> <span class="fu">compact</span>(raw)</span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a>  participants_list <span class="ot">&lt;-</span> <span class="fu">unlist</span>(<span class="fu">lapply</span>(raw, \(d) {</span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a>    matchId <span class="ot">&lt;-</span> d<span class="sc">$</span>metadata<span class="sc">$</span>matchId</span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a>    <span class="fu">lapply</span>(d<span class="sc">$</span>info<span class="sc">$</span>participants, \(p) <span class="fu">list</span>(</span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a>      <span class="at">matchId                     =</span> matchId,</span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a>      <span class="at">gameId                      =</span> d<span class="sc">$</span>info<span class="sc">$</span>gameId,</span>
+<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a>      <span class="at">gameDuration                =</span> d<span class="sc">$</span>info<span class="sc">$</span>gameDuration,</span>
+<span id="cb5-29"><a href="#cb5-29" aria-hidden="true" tabindex="-1"></a>      <span class="at">gameMode                    =</span> d<span class="sc">$</span>info<span class="sc">$</span>gameMode,</span>
+<span id="cb5-30"><a href="#cb5-30" aria-hidden="true" tabindex="-1"></a>      <span class="at">participantId               =</span> p<span class="sc">$</span>participantId,</span>
+<span id="cb5-31"><a href="#cb5-31" aria-hidden="true" tabindex="-1"></a>      <span class="at">puuid                       =</span> p<span class="sc">$</span>puuid,</span>
+<span id="cb5-32"><a href="#cb5-32" aria-hidden="true" tabindex="-1"></a>      <span class="at">summonerName                =</span> p<span class="sc">$</span>riotIdGameName,</span>
+<span id="cb5-33"><a href="#cb5-33" aria-hidden="true" tabindex="-1"></a>      <span class="at">championName                =</span> p<span class="sc">$</span>championName,</span>
+<span id="cb5-34"><a href="#cb5-34" aria-hidden="true" tabindex="-1"></a>      <span class="at">teamId                      =</span> p<span class="sc">$</span>teamId,</span>
+<span id="cb5-35"><a href="#cb5-35" aria-hidden="true" tabindex="-1"></a>      <span class="at">teamPosition                =</span> p<span class="sc">$</span>teamPosition,</span>
+<span id="cb5-36"><a href="#cb5-36" aria-hidden="true" tabindex="-1"></a>      <span class="at">win                         =</span> p<span class="sc">$</span>win,</span>
+<span id="cb5-37"><a href="#cb5-37" aria-hidden="true" tabindex="-1"></a>      <span class="at">kills                       =</span> p<span class="sc">$</span>kills,</span>
+<span id="cb5-38"><a href="#cb5-38" aria-hidden="true" tabindex="-1"></a>      <span class="at">deaths                      =</span> p<span class="sc">$</span>deaths,</span>
+<span id="cb5-39"><a href="#cb5-39" aria-hidden="true" tabindex="-1"></a>      <span class="at">assists                     =</span> p<span class="sc">$</span>assists,</span>
+<span id="cb5-40"><a href="#cb5-40" aria-hidden="true" tabindex="-1"></a>      <span class="at">champLevel                  =</span> p<span class="sc">$</span>champLevel,</span>
+<span id="cb5-41"><a href="#cb5-41" aria-hidden="true" tabindex="-1"></a>      <span class="at">totalDamageDealtToChampions =</span> p<span class="sc">$</span>totalDamageDealtToChampions,</span>
+<span id="cb5-42"><a href="#cb5-42" aria-hidden="true" tabindex="-1"></a>      <span class="at">goldEarned                  =</span> p<span class="sc">$</span>goldEarned,</span>
+<span id="cb5-43"><a href="#cb5-43" aria-hidden="true" tabindex="-1"></a>      <span class="at">totalMinionsKilled          =</span> p<span class="sc">$</span>totalMinionsKilled,</span>
+<span id="cb5-44"><a href="#cb5-44" aria-hidden="true" tabindex="-1"></a>      <span class="at">visionScore                 =</span> p<span class="sc">$</span>visionScore,</span>
+<span id="cb5-45"><a href="#cb5-45" aria-hidden="true" tabindex="-1"></a>      <span class="at">summonerLevel               =</span> p<span class="sc">$</span>summonerLevel</span>
+<span id="cb5-46"><a href="#cb5-46" aria-hidden="true" tabindex="-1"></a>    ))</span>
+<span id="cb5-47"><a href="#cb5-47" aria-hidden="true" tabindex="-1"></a>  }), <span class="at">recursive =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb5-48"><a href="#cb5-48" aria-hidden="true" tabindex="-1"></a>  df <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(participants_list)</span>
+<span id="cb5-49"><a href="#cb5-49" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-50"><a href="#cb5-50" aria-hidden="true" tabindex="-1"></a>  bans <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(<span class="fu">lapply</span>(raw, \(d) {</span>
+<span id="cb5-51"><a href="#cb5-51" aria-hidden="true" tabindex="-1"></a>    matchId <span class="ot">&lt;-</span> d<span class="sc">$</span>metadata<span class="sc">$</span>matchId</span>
+<span id="cb5-52"><a href="#cb5-52" aria-hidden="true" tabindex="-1"></a>    <span class="fu">bind_rows</span>(<span class="fu">lapply</span>(d<span class="sc">$</span>info<span class="sc">$</span>teams, \(t)</span>
+<span id="cb5-53"><a href="#cb5-53" aria-hidden="true" tabindex="-1"></a>      <span class="fu">bind_rows</span>(<span class="fu">lapply</span>(t<span class="sc">$</span>bans, \(b) <span class="fu">list</span>(<span class="at">championId =</span> b<span class="sc">$</span>championId, <span class="at">pickTurn =</span> b<span class="sc">$</span>pickTurn)))</span>
+<span id="cb5-54"><a href="#cb5-54" aria-hidden="true" tabindex="-1"></a>    )) <span class="sc">|&gt;</span> <span class="fu">mutate</span>(<span class="at">matchId =</span> matchId)</span>
+<span id="cb5-55"><a href="#cb5-55" aria-hidden="true" tabindex="-1"></a>  }))</span>
+<span id="cb5-56"><a href="#cb5-56" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-57"><a href="#cb5-57" aria-hidden="true" tabindex="-1"></a>  team_objectives <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(<span class="fu">lapply</span>(raw, \(d) {</span>
+<span id="cb5-58"><a href="#cb5-58" aria-hidden="true" tabindex="-1"></a>    matchId <span class="ot">&lt;-</span> d<span class="sc">$</span>metadata<span class="sc">$</span>matchId</span>
+<span id="cb5-59"><a href="#cb5-59" aria-hidden="true" tabindex="-1"></a>    <span class="fu">bind_rows</span>(<span class="fu">lapply</span>(d<span class="sc">$</span>info<span class="sc">$</span>teams, \(t) {</span>
+<span id="cb5-60"><a href="#cb5-60" aria-hidden="true" tabindex="-1"></a>      team_participants <span class="ot">&lt;-</span> d<span class="sc">$</span>info<span class="sc">$</span>participants[<span class="fu">sapply</span>(d<span class="sc">$</span>info<span class="sc">$</span>participants, \(p) p<span class="sc">$</span>teamId) <span class="sc">==</span> t<span class="sc">$</span>teamId]</span>
+<span id="cb5-61"><a href="#cb5-61" aria-hidden="true" tabindex="-1"></a>      <span class="fu">list</span>(</span>
+<span id="cb5-62"><a href="#cb5-62" aria-hidden="true" tabindex="-1"></a>        <span class="at">matchId     =</span> matchId,</span>
+<span id="cb5-63"><a href="#cb5-63" aria-hidden="true" tabindex="-1"></a>        <span class="at">teamId      =</span> t<span class="sc">$</span>teamId,</span>
+<span id="cb5-64"><a href="#cb5-64" aria-hidden="true" tabindex="-1"></a>        <span class="at">win         =</span> t<span class="sc">$</span>win,</span>
+<span id="cb5-65"><a href="#cb5-65" aria-hidden="true" tabindex="-1"></a>        <span class="at">dragonKills =</span> t<span class="sc">$</span>objectives<span class="sc">$</span>dragon<span class="sc">$</span>kills,</span>
+<span id="cb5-66"><a href="#cb5-66" aria-hidden="true" tabindex="-1"></a>        <span class="at">baronKills  =</span> t<span class="sc">$</span>objectives<span class="sc">$</span>baron<span class="sc">$</span>kills,</span>
+<span id="cb5-67"><a href="#cb5-67" aria-hidden="true" tabindex="-1"></a>        <span class="at">heraldKills =</span> t<span class="sc">$</span>objectives<span class="sc">$</span>riftHerald<span class="sc">$</span>kills,</span>
+<span id="cb5-68"><a href="#cb5-68" aria-hidden="true" tabindex="-1"></a>        <span class="at">elderKills  =</span> <span class="fu">max</span>(<span class="fu">sapply</span>(team_participants, \(p) <span class="fu">as.integer</span>(p<span class="sc">$</span>challenges<span class="sc">$</span>teamElderDragonKills <span class="sc">%||%</span> <span class="dv">0</span>L)))</span>
+<span id="cb5-69"><a href="#cb5-69" aria-hidden="true" tabindex="-1"></a>      )</span>
+<span id="cb5-70"><a href="#cb5-70" aria-hidden="true" tabindex="-1"></a>    }))</span>
+<span id="cb5-71"><a href="#cb5-71" aria-hidden="true" tabindex="-1"></a>  }))</span>
+<span id="cb5-72"><a href="#cb5-72" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-73"><a href="#cb5-73" aria-hidden="true" tabindex="-1"></a>  team_gold <span class="ot">&lt;-</span> df <span class="sc">|&gt;</span> <span class="fu">summarise</span>(<span class="at">teamGold =</span> <span class="fu">sum</span>(goldEarned), <span class="at">.by =</span> <span class="fu">c</span>(matchId, teamId))</span>
+<span id="cb5-74"><a href="#cb5-74" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-75"><a href="#cb5-75" aria-hidden="true" tabindex="-1"></a>  result <span class="ot">&lt;-</span> df <span class="sc">|&gt;</span></span>
+<span id="cb5-76"><a href="#cb5-76" aria-hidden="true" tabindex="-1"></a>    <span class="fu">left_join</span>(team_gold, <span class="at">by =</span> <span class="fu">c</span>(<span class="st">"matchId"</span>, <span class="st">"teamId"</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb5-77"><a href="#cb5-77" aria-hidden="true" tabindex="-1"></a>    <span class="fu">left_join</span>(<span class="fu">rename</span>(team_gold, <span class="at">enemyTeamId =</span> teamId, <span class="at">enemyGold =</span> teamGold), <span class="at">by =</span> <span class="st">"matchId"</span>, <span class="at">relationship =</span> <span class="st">"many-to-many"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb5-78"><a href="#cb5-78" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(teamId <span class="sc">!=</span> enemyTeamId) <span class="sc">|&gt;</span></span>
+<span id="cb5-79"><a href="#cb5-79" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">goldDiff =</span> (teamGold <span class="sc">-</span> enemyGold) <span class="sc">/</span> <span class="dv">1000</span>) <span class="sc">|&gt;</span></span>
+<span id="cb5-80"><a href="#cb5-80" aria-hidden="true" tabindex="-1"></a>    <span class="fu">select</span>(<span class="sc">-</span>enemyTeamId, <span class="sc">-</span>enemyGold, <span class="sc">-</span>teamGold)</span>
+<span id="cb5-81"><a href="#cb5-81" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-82"><a href="#cb5-82" aria-hidden="true" tabindex="-1"></a>  <span class="fu">list</span>(<span class="at">matches =</span> result, <span class="at">bans =</span> bans, <span class="at">team_objectives =</span> team_objectives)</span>
+<span id="cb5-83"><a href="#cb5-83" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb5-84"><a href="#cb5-84" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-85"><a href="#cb5-85" aria-hidden="true" tabindex="-1"></a>kaggle_data <span class="ot">&lt;-</span> <span class="fu">load_matches</span>(data_dir, <span class="at">max_files =</span> <span class="dv">20000</span>)</span>
+<span id="cb5-86"><a href="#cb5-86" aria-hidden="true" tabindex="-1"></a>matches          <span class="ot">&lt;-</span> kaggle_data<span class="sc">$</span>matches</span>
+<span id="cb5-87"><a href="#cb5-87" aria-hidden="true" tabindex="-1"></a>bans             <span class="ot">&lt;-</span> kaggle_data<span class="sc">$</span>bans</span>
+<span id="cb5-88"><a href="#cb5-88" aria-hidden="true" tabindex="-1"></a>team_objectives  <span class="ot">&lt;-</span> kaggle_data<span class="sc">$</span>team_objectives</span>
+<span id="cb5-89"><a href="#cb5-89" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(matches[<span class="sc">-</span><span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">16</span>)]) <span class="sc">|&gt;</span></span>
+<span id="cb5-90"><a href="#cb5-90" aria-hidden="true" tabindex="-1"></a>  <span class="fu">gt</span>()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div id="yjlgeqhkwa" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#yjlgeqhkwa table {
+  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#yjlgeqhkwa thead, #yjlgeqhkwa tbody, #yjlgeqhkwa tfoot, #yjlgeqhkwa tr, #yjlgeqhkwa td, #yjlgeqhkwa th {
+  border-style: none;
+}
+
+#yjlgeqhkwa p {
+  margin: 0;
+  padding: 0;
+}
+
+#yjlgeqhkwa .gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#yjlgeqhkwa .gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#yjlgeqhkwa .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#yjlgeqhkwa .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#yjlgeqhkwa .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#yjlgeqhkwa .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#yjlgeqhkwa .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#yjlgeqhkwa .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#yjlgeqhkwa .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#yjlgeqhkwa .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#yjlgeqhkwa .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#yjlgeqhkwa .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#yjlgeqhkwa .gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#yjlgeqhkwa .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#yjlgeqhkwa .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#yjlgeqhkwa .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#yjlgeqhkwa .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#yjlgeqhkwa .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#yjlgeqhkwa .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#yjlgeqhkwa .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#yjlgeqhkwa .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#yjlgeqhkwa .gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#yjlgeqhkwa .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#yjlgeqhkwa .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#yjlgeqhkwa .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#yjlgeqhkwa .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#yjlgeqhkwa .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#yjlgeqhkwa .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#yjlgeqhkwa .gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#yjlgeqhkwa .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#yjlgeqhkwa .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#yjlgeqhkwa .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#yjlgeqhkwa .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#yjlgeqhkwa .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#yjlgeqhkwa .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#yjlgeqhkwa .gt_left {
+  text-align: left;
+}
+
+#yjlgeqhkwa .gt_center {
+  text-align: center;
+}
+
+#yjlgeqhkwa .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#yjlgeqhkwa .gt_font_normal {
+  font-weight: normal;
+}
+
+#yjlgeqhkwa .gt_font_bold {
+  font-weight: bold;
+}
+
+#yjlgeqhkwa .gt_font_italic {
+  font-style: italic;
+}
+
+#yjlgeqhkwa .gt_super {
+  font-size: 65%;
+}
+
+#yjlgeqhkwa .gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#yjlgeqhkwa .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#yjlgeqhkwa .gt_indent_1 {
+  text-indent: 5px;
+}
+
+#yjlgeqhkwa .gt_indent_2 {
+  text-indent: 10px;
+}
+
+#yjlgeqhkwa .gt_indent_3 {
+  text-indent: 15px;
+}
+
+#yjlgeqhkwa .gt_indent_4 {
+  text-indent: 20px;
+}
+
+#yjlgeqhkwa .gt_indent_5 {
+  text-indent: 25px;
+}
+
+#yjlgeqhkwa .katex-display {
+  display: inline-flex !important;
+  margin-bottom: 0.75em !important;
+}
+
+#yjlgeqhkwa div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+  height: 0px !important;
+}
+</style>
+
+<table class="gt_table caption-top table table-sm table-striped small" data-quarto-bootstrap="false">
+<thead>
+<tr class="gt_col_headings header">
+<th id="matchId" class="gt_col_heading gt_columns_bottom_border gt_left" data-quarto-table-cell-role="th" scope="col">matchId</th>
+<th id="gameDuration" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">gameDuration</th>
+<th id="gameMode" class="gt_col_heading gt_columns_bottom_border gt_left" data-quarto-table-cell-role="th" scope="col">gameMode</th>
+<th id="participantId" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">participantId</th>
+<th id="puuid" class="gt_col_heading gt_columns_bottom_border gt_left" data-quarto-table-cell-role="th" scope="col">puuid</th>
+<th id="summonerName" class="gt_col_heading gt_columns_bottom_border gt_left" data-quarto-table-cell-role="th" scope="col">summonerName</th>
+<th id="championName" class="gt_col_heading gt_columns_bottom_border gt_left" data-quarto-table-cell-role="th" scope="col">championName</th>
+<th id="teamId" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">teamId</th>
+<th id="teamPosition" class="gt_col_heading gt_columns_bottom_border gt_left" data-quarto-table-cell-role="th" scope="col">teamPosition</th>
+<th id="win" class="gt_col_heading gt_columns_bottom_border gt_center" data-quarto-table-cell-role="th" scope="col">win</th>
+<th id="kills" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">kills</th>
+<th id="deaths" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">deaths</th>
+<th id="assists" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">assists</th>
+<th id="champLevel" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">champLevel</th>
+<th id="goldEarned" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">goldEarned</th>
+<th id="totalMinionsKilled" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">totalMinionsKilled</th>
+<th id="visionScore" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">visionScore</th>
+<th id="summonerLevel" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">summonerLevel</th>
+<th id="goldDiff" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">goldDiff</th>
+</tr>
+</thead>
+<tbody class="gt_table_body">
+<tr class="odd">
+<td class="gt_row gt_left" headers="matchId">EUN1_3887533525</td>
+<td class="gt_row gt_right" headers="gameDuration">2433</td>
+<td class="gt_row gt_left" headers="gameMode">CLASSIC</td>
+<td class="gt_row gt_right" headers="participantId">1</td>
+<td class="gt_row gt_left" headers="puuid">HkMVTlWGtIXaBnRdNEkCj8v47t7PTqGcJIiQqIsDXOVT0xxDjICBrnvlEVuvNZjbbeg9qov87vAOxw</td>
+<td class="gt_row gt_left" headers="summonerName">Lilith</td>
+<td class="gt_row gt_left" headers="championName">Garen</td>
+<td class="gt_row gt_right" headers="teamId">100</td>
+<td class="gt_row gt_left" headers="teamPosition">TOP</td>
+<td class="gt_row gt_center" headers="win">FALSE</td>
+<td class="gt_row gt_right" headers="kills">3</td>
+<td class="gt_row gt_right" headers="deaths">10</td>
+<td class="gt_row gt_right" headers="assists">8</td>
+<td class="gt_row gt_right" headers="champLevel">20</td>
+<td class="gt_row gt_right" headers="goldEarned">14417</td>
+<td class="gt_row gt_right" headers="totalMinionsKilled">293</td>
+<td class="gt_row gt_right" headers="visionScore">27</td>
+<td class="gt_row gt_right" headers="summonerLevel">368</td>
+<td class="gt_row gt_right" headers="goldDiff">-1.474</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="matchId">EUN1_3887533525</td>
+<td class="gt_row gt_right" headers="gameDuration">2433</td>
+<td class="gt_row gt_left" headers="gameMode">CLASSIC</td>
+<td class="gt_row gt_right" headers="participantId">2</td>
+<td class="gt_row gt_left" headers="puuid">cHFZeCIjYy1_JAPaR5d9N_vqIIt4E2p8MpaoTfjqCUViJ59gRovuFvc7zeiFzeQoyUepEUWue7w73Q</td>
+<td class="gt_row gt_left" headers="summonerName">Aneyy</td>
+<td class="gt_row gt_left" headers="championName">Briar</td>
+<td class="gt_row gt_right" headers="teamId">100</td>
+<td class="gt_row gt_left" headers="teamPosition">JUNGLE</td>
+<td class="gt_row gt_center" headers="win">FALSE</td>
+<td class="gt_row gt_right" headers="kills">11</td>
+<td class="gt_row gt_right" headers="deaths">7</td>
+<td class="gt_row gt_right" headers="assists">8</td>
+<td class="gt_row gt_right" headers="champLevel">18</td>
+<td class="gt_row gt_right" headers="goldEarned">18058</td>
+<td class="gt_row gt_right" headers="totalMinionsKilled">84</td>
+<td class="gt_row gt_right" headers="visionScore">24</td>
+<td class="gt_row gt_right" headers="summonerLevel">271</td>
+<td class="gt_row gt_right" headers="goldDiff">-1.474</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="matchId">EUN1_3887533525</td>
+<td class="gt_row gt_right" headers="gameDuration">2433</td>
+<td class="gt_row gt_left" headers="gameMode">CLASSIC</td>
+<td class="gt_row gt_right" headers="participantId">3</td>
+<td class="gt_row gt_left" headers="puuid">QOHLajXyjKSd4sfevOXNOzmUGNeRui2loNW4pqO_gSJePh_seNo_UdCqJqLiMBBOTjvDPp28xcXuiA</td>
+<td class="gt_row gt_left" headers="summonerName">Titán</td>
+<td class="gt_row gt_left" headers="championName">Orianna</td>
+<td class="gt_row gt_right" headers="teamId">100</td>
+<td class="gt_row gt_left" headers="teamPosition">MIDDLE</td>
+<td class="gt_row gt_center" headers="win">FALSE</td>
+<td class="gt_row gt_right" headers="kills">7</td>
+<td class="gt_row gt_right" headers="deaths">11</td>
+<td class="gt_row gt_right" headers="assists">8</td>
+<td class="gt_row gt_right" headers="champLevel">18</td>
+<td class="gt_row gt_right" headers="goldEarned">16135</td>
+<td class="gt_row gt_right" headers="totalMinionsKilled">307</td>
+<td class="gt_row gt_right" headers="visionScore">37</td>
+<td class="gt_row gt_right" headers="summonerLevel">731</td>
+<td class="gt_row gt_right" headers="goldDiff">-1.474</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="matchId">EUN1_3887533525</td>
+<td class="gt_row gt_right" headers="gameDuration">2433</td>
+<td class="gt_row gt_left" headers="gameMode">CLASSIC</td>
+<td class="gt_row gt_right" headers="participantId">4</td>
+<td class="gt_row gt_left" headers="puuid">zPQu3vkIxdFsfwGxCWHXxV8fiHZSrH3L-7bk3JSjX1je3sx3UnIuiXq-zsygU6LDgmlrIF5gEswj0g</td>
+<td class="gt_row gt_left" headers="summonerName">valkyrie</td>
+<td class="gt_row gt_left" headers="championName">Kaisa</td>
+<td class="gt_row gt_right" headers="teamId">100</td>
+<td class="gt_row gt_left" headers="teamPosition">BOTTOM</td>
+<td class="gt_row gt_center" headers="win">FALSE</td>
+<td class="gt_row gt_right" headers="kills">9</td>
+<td class="gt_row gt_right" headers="deaths">5</td>
+<td class="gt_row gt_right" headers="assists">5</td>
+<td class="gt_row gt_right" headers="champLevel">18</td>
+<td class="gt_row gt_right" headers="goldEarned">23054</td>
+<td class="gt_row gt_right" headers="totalMinionsKilled">415</td>
+<td class="gt_row gt_right" headers="visionScore">47</td>
+<td class="gt_row gt_right" headers="summonerLevel">722</td>
+<td class="gt_row gt_right" headers="goldDiff">-1.474</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="matchId">EUN1_3887533525</td>
+<td class="gt_row gt_right" headers="gameDuration">2433</td>
+<td class="gt_row gt_left" headers="gameMode">CLASSIC</td>
+<td class="gt_row gt_right" headers="participantId">5</td>
+<td class="gt_row gt_left" headers="puuid">dFlkLo29sWklGdsFfKoO1bhmP064bcdD5K9nxK-YTg1FhKezCZkLYPgiJrRZ7zdAhvdowKK-TmC8mw</td>
+<td class="gt_row gt_left" headers="summonerName">Thefollower1804</td>
+<td class="gt_row gt_left" headers="championName">Renata</td>
+<td class="gt_row gt_right" headers="teamId">100</td>
+<td class="gt_row gt_left" headers="teamPosition">UTILITY</td>
+<td class="gt_row gt_center" headers="win">FALSE</td>
+<td class="gt_row gt_right" headers="kills">2</td>
+<td class="gt_row gt_right" headers="deaths">6</td>
+<td class="gt_row gt_right" headers="assists">19</td>
+<td class="gt_row gt_right" headers="champLevel">18</td>
+<td class="gt_row gt_right" headers="goldEarned">12261</td>
+<td class="gt_row gt_right" headers="totalMinionsKilled">47</td>
+<td class="gt_row gt_right" headers="visionScore">90</td>
+<td class="gt_row gt_right" headers="summonerLevel">176</td>
+<td class="gt_row gt_right" headers="goldDiff">-1.474</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="matchId">EUN1_3887533525</td>
+<td class="gt_row gt_right" headers="gameDuration">2433</td>
+<td class="gt_row gt_left" headers="gameMode">CLASSIC</td>
+<td class="gt_row gt_right" headers="participantId">6</td>
+<td class="gt_row gt_left" headers="puuid">OiF2BztXtz3EeaOw6o7gd9SCQVwWh6GqDhPZWNLzRmcReEHa-GChI-SPFU7dFKih6aVgZFYf6WtMvA</td>
+<td class="gt_row gt_left" headers="summonerName">K4RHU</td>
+<td class="gt_row gt_left" headers="championName">Zaahen</td>
+<td class="gt_row gt_right" headers="teamId">200</td>
+<td class="gt_row gt_left" headers="teamPosition">TOP</td>
+<td class="gt_row gt_center" headers="win">TRUE</td>
+<td class="gt_row gt_right" headers="kills">15</td>
+<td class="gt_row gt_right" headers="deaths">6</td>
+<td class="gt_row gt_right" headers="assists">5</td>
+<td class="gt_row gt_right" headers="champLevel">20</td>
+<td class="gt_row gt_right" headers="goldEarned">21667</td>
+<td class="gt_row gt_right" headers="totalMinionsKilled">322</td>
+<td class="gt_row gt_right" headers="visionScore">34</td>
+<td class="gt_row gt_right" headers="summonerLevel">565</td>
+<td class="gt_row gt_right" headers="goldDiff">1.474</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+</section>
+<section id="exploratory-data-analysis" class="level2">
+<h2 class="anchored" data-anchor-id="exploratory-data-analysis">Exploratory Data Analysis</h2>
+<p>The dataset does not include per-player rank/elo. Summoner level is used as a proxy for player experience. Game duration is in seconds and converted to minutes.</p>
+<section id="game-duration" class="level3">
+<h3 class="anchored" data-anchor-id="game-duration">Game Duration</h3>
+<p>Most ranked games cluster between 25 and 35 minutes. Short games (under 20 min) typically indicate early surrenders, while games beyond 40 minutes are late-game stalemates.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>chart <span class="ot">&lt;-</span> matches <span class="sc">|&gt;</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">distinct</span>(matchId, gameDuration) <span class="sc">|&gt;</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">minutes =</span> gameDuration <span class="sc">/</span> <span class="dv">60</span>) <span class="sc">|&gt;</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> minutes)) <span class="sc">+</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">bins =</span> <span class="dv">60</span>, <span class="at">fill =</span> <span class="st">"#4C72B0"</span>, <span class="at">color =</span> <span class="st">"white"</span>) <span class="sc">+</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">14</span>) <span class="sc">+</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"Game Duration Distribution"</span>, <span class="at">x =</span> <span class="st">"Duration (minutes)"</span>, <span class="at">y =</span> <span class="st">"Count"</span>)</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(chart)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="league_games_files/figure-html/unnamed-chunk-2-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="player-experience-distribution" class="level3">
+<h3 class="anchored" data-anchor-id="player-experience-distribution">Player Experience Distribution</h3>
+<p>Summoner level is a rough proxy for hours played. A concentration in lower buckets suggests many newer players in the dataset; a spread toward higher levels indicates a mix of veterans.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>matches <span class="sc">|&gt;</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    <span class="at">level_bucket =</span> <span class="fu">cut</span>(summonerLevel, <span class="at">breaks =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">100</span>, <span class="dv">200</span>, <span class="dv">300</span>, <span class="dv">500</span>, <span class="dv">750</span>, <span class="cn">Inf</span>),</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>                       <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">"1-100"</span>, <span class="st">"101-200"</span>, <span class="st">"201-300"</span>, <span class="st">"301-500"</span>, <span class="st">"501-750"</span>, <span class="st">"750+"</span>))</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">count</span>(level_bucket) <span class="sc">|&gt;</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">level_bucket =</span> <span class="fu">fct_rev</span>(level_bucket)) <span class="sc">|&gt;</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">y =</span> level_bucket, <span class="at">x =</span> n, <span class="at">fill =</span> level_bucket)) <span class="sc">+</span></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_col</span>(<span class="at">fill =</span> <span class="st">"#4C72B0"</span>) <span class="sc">+</span></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_text</span>(<span class="fu">aes</span>(<span class="at">label =</span> n), <span class="at">hjust =</span> <span class="sc">-</span><span class="fl">0.2</span>, <span class="at">size =</span> <span class="dv">4</span>) <span class="sc">+</span></span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_continuous</span>(<span class="at">expand =</span> <span class="fu">expansion</span>(<span class="at">mult =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="fl">0.15</span>))) <span class="sc">+</span></span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">14</span>) <span class="sc">+</span></span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"none"</span>) <span class="sc">+</span></span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"Player Distribution by Summoner Level"</span>, <span class="at">y =</span> <span class="st">"Summoner Level"</span>, <span class="at">x =</span> <span class="st">"Players"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="league_games_files/figure-html/unnamed-chunk-3-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="kda-distribution" class="level3">
+<h3 class="anchored" data-anchor-id="kda-distribution">KDA Distribution</h3>
+<p>KDA (kills + assists / deaths) measures individual combat performance. The distribution is right-skewed — most players sit between 1 and 5, with a long tail of outliers who either stomped or played a low-death support role.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>matches <span class="sc">|&gt;</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">kda =</span> (kills <span class="sc">+</span> assists) <span class="sc">/</span> <span class="fu">pmax</span>(deaths, <span class="dv">1</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> kda)) <span class="sc">+</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">bins =</span> <span class="dv">80</span>, <span class="at">fill =</span> <span class="st">"#4C72B0"</span>, <span class="at">color =</span> <span class="st">"white"</span>) <span class="sc">+</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_continuous</span>(<span class="at">limits =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">15</span>), <span class="at">oob =</span> scales<span class="sc">::</span>squish, <span class="at">expand =</span> <span class="fu">expansion</span>(<span class="at">mult =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="fl">0.15</span>))) <span class="sc">+</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">14</span>) <span class="sc">+</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"KDA Distribution"</span>, <span class="at">x =</span> <span class="st">"KDA"</span>, <span class="at">y =</span> <span class="st">"Players"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="league_games_files/figure-html/unnamed-chunk-4-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+</section>
+<section id="objective-impact" class="level2">
+<h2 class="anchored" data-anchor-id="objective-impact">Objective Impact</h2>
+<p>Win rate for teams that secured each major objective. A value above 50% indicates the objective is associated with winning.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>team_objectives <span class="sc">|&gt;</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(<span class="fu">c</span>(dragonKills, baronKills, elderKills, heraldKills),</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>               <span class="at">names_to =</span> <span class="st">"objective"</span>, <span class="at">values_to =</span> <span class="st">"kills"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">objective =</span> <span class="fu">recode</span>(objective,</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">dragonKills =</span> <span class="st">"Drake Soul"</span>, <span class="at">baronKills =</span> <span class="st">"Baron"</span>,</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">elderKills  =</span> <span class="st">"Elder Dragon"</span>, <span class="at">heraldKills =</span> <span class="st">"Rift Herald"</span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>  )) <span class="sc">|&gt;</span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="fu">if_else</span>(objective <span class="sc">==</span> <span class="st">"Drake Soul"</span>, kills <span class="sc">&gt;=</span> <span class="dv">4</span>, kills <span class="sc">&gt;=</span> <span class="dv">1</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(objective) <span class="sc">|&gt;</span></span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">win_rate =</span> <span class="fu">mean</span>(win), <span class="at">.groups =</span> <span class="st">"drop"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">objective =</span> <span class="fu">fct_reorder</span>(objective, win_rate)) <span class="sc">|&gt;</span></span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> win_rate, <span class="at">y =</span> objective)) <span class="sc">+</span></span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_col</span>(<span class="at">width =</span> <span class="fl">0.5</span>, <span class="at">fill =</span> <span class="st">"#4C72B0"</span>) <span class="sc">+</span></span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_text</span>(<span class="fu">aes</span>(<span class="at">label =</span> scales<span class="sc">::</span><span class="fu">percent</span>(win_rate, <span class="at">accuracy =</span> <span class="dv">1</span>)), <span class="at">hjust =</span> <span class="sc">-</span><span class="fl">0.2</span>, <span class="at">size =</span> <span class="fl">4.5</span>) <span class="sc">+</span></span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_continuous</span>(<span class="at">labels =</span> scales<span class="sc">::</span>percent, <span class="at">limits =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">1</span>)) <span class="sc">+</span></span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">14</span>) <span class="sc">+</span></span>
+<span id="cb9-17"><a href="#cb9-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"none"</span>) <span class="sc">+</span></span>
+<span id="cb9-18"><a href="#cb9-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"Win Rate When Securing Objective"</span>,</span>
+<span id="cb9-19"><a href="#cb9-19" aria-hidden="true" tabindex="-1"></a>       <span class="at">subtitle =</span> <span class="st">"Among games where the team secured that objective"</span>,</span>
+<span id="cb9-20"><a href="#cb9-20" aria-hidden="true" tabindex="-1"></a>       <span class="at">x =</span> <span class="st">"Win Rate"</span>, <span class="at">y =</span> <span class="cn">NULL</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="league_games_files/figure-html/unnamed-chunk-5-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="objective-secure-rate-by-side" class="level2">
+<h2 class="anchored" data-anchor-id="objective-secure-rate-by-side">Objective Secure Rate by Side</h2>
+<p>For each objective, how often did blue side vs red side secure it across all games.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>team_objectives <span class="sc">|&gt;</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">side =</span> <span class="fu">ifelse</span>(teamId <span class="sc">==</span> <span class="dv">100</span>, <span class="st">"Blue Side"</span>, <span class="st">"Red Side"</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(<span class="fu">c</span>(dragonKills, baronKills, elderKills, heraldKills),</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>               <span class="at">names_to =</span> <span class="st">"objective"</span>, <span class="at">values_to =</span> <span class="st">"kills"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">objective =</span> <span class="fu">recode</span>(objective,</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">dragonKills =</span> <span class="st">"Drake Soul"</span>, <span class="at">baronKills =</span> <span class="st">"Baron"</span>,</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">elderKills  =</span> <span class="st">"Elder Dragon"</span>, <span class="at">heraldKills =</span> <span class="st">"Rift Herald"</span></span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>  )) <span class="sc">|&gt;</span></span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">secured =</span> <span class="fu">if_else</span>(objective <span class="sc">==</span> <span class="st">"Drake Soul"</span>, kills <span class="sc">&gt;=</span> <span class="dv">4</span>, kills <span class="sc">&gt;=</span> <span class="dv">1</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(objective, side) <span class="sc">|&gt;</span></span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">rate =</span> <span class="fu">mean</span>(secured), <span class="at">.groups =</span> <span class="st">"drop"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">objective =</span> <span class="fu">factor</span>(objective, <span class="at">levels =</span> <span class="fu">c</span>(<span class="st">"Drake Soul"</span>, <span class="st">"Baron"</span>, <span class="st">"Elder Dragon"</span>, <span class="st">"Rift Herald"</span>))) <span class="sc">|&gt;</span></span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> rate, <span class="at">y =</span> objective, <span class="at">fill =</span> side)) <span class="sc">+</span></span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_col</span>(<span class="at">position =</span> <span class="st">"dodge"</span>, <span class="at">width =</span> <span class="fl">0.6</span>) <span class="sc">+</span></span>
+<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_text</span>(<span class="fu">aes</span>(<span class="at">label =</span> scales<span class="sc">::</span><span class="fu">percent</span>(rate, <span class="at">accuracy =</span> <span class="fl">0.1</span>)),</span>
+<span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a>            <span class="at">position =</span> <span class="fu">position_dodge</span>(<span class="at">width =</span> <span class="fl">0.6</span>), <span class="at">hjust =</span> <span class="sc">-</span><span class="fl">0.2</span>, <span class="at">size =</span> <span class="fl">3.5</span>) <span class="sc">+</span></span>
+<span id="cb10-17"><a href="#cb10-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">"Blue Side"</span> <span class="ot">=</span> <span class="st">"#4C72B0"</span>, <span class="st">"Red Side"</span> <span class="ot">=</span> <span class="st">"#C44E52"</span>)) <span class="sc">+</span></span>
+<span id="cb10-18"><a href="#cb10-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_continuous</span>(<span class="at">labels =</span> scales<span class="sc">::</span>percent, <span class="at">limits =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">1</span>)) <span class="sc">+</span></span>
+<span id="cb10-19"><a href="#cb10-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">14</span>) <span class="sc">+</span></span>
+<span id="cb10-20"><a href="#cb10-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"top"</span>) <span class="sc">+</span></span>
+<span id="cb10-21"><a href="#cb10-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"Objective Secure Rate by Side"</span>,</span>
+<span id="cb10-22"><a href="#cb10-22" aria-hidden="true" tabindex="-1"></a>       <span class="at">subtitle =</span> <span class="st">"% of all games where each side secured the objective"</span>,</span>
+<span id="cb10-23"><a href="#cb10-23" aria-hidden="true" tabindex="-1"></a>       <span class="at">x =</span> <span class="st">"Secure Rate"</span>, <span class="at">y =</span> <span class="cn">NULL</span>, <span class="at">fill =</span> <span class="cn">NULL</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="league_games_files/figure-html/unnamed-chunk-6-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="broken-champions" class="level2">
+<h2 class="anchored" data-anchor-id="broken-champions">Broken Champions</h2>
+<p>Champions with high win rate and high pick rate are likely overpowered. Dashed line marks the average pick rate; only champions with ≥10 games and &gt;50% win rate are shown.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>total_matches <span class="ot">&lt;-</span> <span class="fu">n_distinct</span>(matches<span class="sc">$</span>matchId)</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>champion_stats <span class="ot">&lt;-</span> matches <span class="sc">|&gt;</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(championName) <span class="sc">|&gt;</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">games =</span> <span class="fu">n</span>(), <span class="at">win_rate =</span> <span class="fu">mean</span>(<span class="fu">as.numeric</span>(win)), <span class="at">.groups =</span> <span class="st">"drop"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">pick_rate =</span> games <span class="sc">/</span> total_matches)</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>champion_stats <span class="sc">|&gt;</span></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(games <span class="sc">&gt;=</span> <span class="dv">10</span>, win_rate <span class="sc">&gt;</span> <span class="fl">0.5</span>) <span class="sc">|&gt;</span></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> pick_rate, <span class="at">y =</span> win_rate, <span class="at">label =</span> <span class="fu">ifelse</span>(win_rate <span class="sc">&gt;</span> <span class="fl">0.52</span> <span class="sc">&amp;</span> pick_rate <span class="sc">&gt;</span> <span class="fl">0.05</span>, championName, <span class="st">""</span>))) <span class="sc">+</span></span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="fu">aes</span>(<span class="at">color =</span> win_rate), <span class="at">size =</span> <span class="dv">3</span>, <span class="at">alpha =</span> <span class="fl">0.8</span>) <span class="sc">+</span></span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>  ggrepel<span class="sc">::</span><span class="fu">geom_text_repel</span>(</span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>    <span class="at">size =</span> <span class="fl">3.5</span>,</span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>    <span class="at">max.overlaps =</span> <span class="dv">20</span>,</span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>    <span class="at">box.padding =</span> <span class="fl">0.4</span>,</span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a>    <span class="at">point.padding =</span> <span class="fl">0.3</span>,</span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a>    <span class="at">segment.color =</span> <span class="st">"gray60"</span>,</span>
+<span id="cb11-18"><a href="#cb11-18" aria-hidden="true" tabindex="-1"></a>    <span class="at">segment.size =</span> <span class="fl">0.3</span>,</span>
+<span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a>    <span class="at">min.segment.length =</span> <span class="fl">0.2</span></span>
+<span id="cb11-20"><a href="#cb11-20" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb11-21"><a href="#cb11-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_color_gradient</span>(<span class="at">low =</span> <span class="st">"red"</span>, <span class="at">high =</span> <span class="st">"blue"</span>) <span class="sc">+</span></span>
+<span id="cb11-22"><a href="#cb11-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_continuous</span>(<span class="at">labels =</span> scales<span class="sc">::</span>percent) <span class="sc">+</span></span>
+<span id="cb11-23"><a href="#cb11-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_y_continuous</span>(<span class="at">labels =</span> scales<span class="sc">::</span>percent) <span class="sc">+</span></span>
+<span id="cb11-24"><a href="#cb11-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="fu">mean</span>(champion_stats<span class="sc">$</span>pick_rate), <span class="at">linetype =</span> <span class="st">"dashed"</span>, <span class="at">color =</span> <span class="st">"gray40"</span>) <span class="sc">+</span></span>
+<span id="cb11-25"><a href="#cb11-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">14</span>) <span class="sc">+</span></span>
+<span id="cb11-26"><a href="#cb11-26" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">aspect.ratio =</span> <span class="dv">1</span>) <span class="sc">+</span></span>
+<span id="cb11-27"><a href="#cb11-27" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"Champion Pick Rate vs Win Rate"</span>, <span class="at">x =</span> <span class="st">"Pick Rate"</span>, <span class="at">y =</span> <span class="st">"Win Rate"</span>, <span class="at">color =</span> <span class="st">"Win Rate"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="league_games_files/figure-html/unnamed-chunk-7-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="key-variables-by-outcome" class="level2">
+<h2 class="anchored" data-anchor-id="key-variables-by-outcome">Key Variables by Outcome</h2>
+<p>ECDF of gold, vision, and kills difference split by match outcome. The wider the gap between the two curves, the stronger that variable predicts winning.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>team_stats <span class="ot">&lt;-</span> matches <span class="sc">|&gt;</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(matchId, teamId) <span class="sc">|&gt;</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">teamVision =</span> <span class="fu">sum</span>(visionScore), <span class="at">teamKills =</span> <span class="fu">sum</span>(kills), <span class="at">.groups =</span> <span class="st">"drop"</span>)</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>matches <span class="ot">&lt;-</span> matches <span class="sc">|&gt;</span></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>    team_stats <span class="sc">|&gt;</span></span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>      <span class="fu">left_join</span>(team_stats <span class="sc">|&gt;</span> <span class="fu">rename</span>(<span class="at">enemyTeamId =</span> teamId, <span class="at">enemyVision =</span> teamVision, <span class="at">enemyKills =</span> teamKills),</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>                <span class="at">by =</span> <span class="st">"matchId"</span>, <span class="at">relationship =</span> <span class="st">"many-to-many"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>      <span class="fu">filter</span>(teamId <span class="sc">!=</span> enemyTeamId) <span class="sc">|&gt;</span></span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>      <span class="fu">mutate</span>(<span class="at">visionDiff =</span> teamVision <span class="sc">-</span> enemyVision, <span class="at">killsDiff =</span> teamKills <span class="sc">-</span> enemyKills) <span class="sc">|&gt;</span></span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>      <span class="fu">select</span>(matchId, teamId, visionDiff, killsDiff),</span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>    <span class="at">by =</span> <span class="fu">c</span>(<span class="st">"matchId"</span>, <span class="st">"teamId"</span>)</span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a>ecdf_data <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(</span>
+<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a>  matches <span class="sc">|&gt;</span> <span class="fu">distinct</span>(matchId, teamId, <span class="at">.keep_all =</span> <span class="cn">TRUE</span>) <span class="sc">|&gt;</span> <span class="fu">mutate</span>(<span class="at">variable =</span> <span class="st">"Gold Difference"</span>,          <span class="at">x =</span> goldDiff <span class="sc">*</span> <span class="dv">1000</span>),</span>
+<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a>  matches <span class="sc">|&gt;</span> <span class="fu">distinct</span>(matchId, teamId, <span class="at">.keep_all =</span> <span class="cn">TRUE</span>) <span class="sc">|&gt;</span> <span class="fu">mutate</span>(<span class="at">variable =</span> <span class="st">"Vision Score Difference"</span>,  <span class="at">x =</span> visionDiff),</span>
+<span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a>  matches <span class="sc">|&gt;</span> <span class="fu">distinct</span>(matchId, teamId, <span class="at">.keep_all =</span> <span class="cn">TRUE</span>) <span class="sc">|&gt;</span> <span class="fu">mutate</span>(<span class="at">variable =</span> <span class="st">"Kills Difference"</span>,         <span class="at">x =</span> killsDiff)</span>
+<span id="cb12-20"><a href="#cb12-20" aria-hidden="true" tabindex="-1"></a>) <span class="sc">|&gt;</span></span>
+<span id="cb12-21"><a href="#cb12-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">outcome =</span> <span class="fu">ifelse</span>(win, <span class="st">"Win"</span>, <span class="st">"Loss"</span>))</span>
+<span id="cb12-22"><a href="#cb12-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-23"><a href="#cb12-23" aria-hidden="true" tabindex="-1"></a>gold_ks <span class="ot">&lt;-</span> <span class="fu">with</span>(</span>
+<span id="cb12-24"><a href="#cb12-24" aria-hidden="true" tabindex="-1"></a>  ecdf_data <span class="sc">|&gt;</span> <span class="fu">filter</span>(variable <span class="sc">==</span> <span class="st">"Gold Difference"</span>),</span>
+<span id="cb12-25"><a href="#cb12-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ks.test</span>(x[outcome <span class="sc">==</span> <span class="st">"Win"</span>], x[outcome <span class="sc">==</span> <span class="st">"Loss"</span>])</span>
+<span id="cb12-26"><a href="#cb12-26" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in ks.test.default(x[outcome == "Win"], x[outcome == "Loss"]): p-value
+will be approximate in the presence of ties</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>gold_ks_label <span class="ot">&lt;-</span> <span class="fu">tibble</span>(</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">variable =</span> <span class="st">"Gold Difference"</span>,</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">label    =</span> <span class="fu">paste0</span>(<span class="st">"KS D = "</span>, <span class="fu">round</span>(gold_ks<span class="sc">$</span>statistic, <span class="dv">3</span>), <span class="st">", p &lt; 0.001"</span>)</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>ecdf_data <span class="sc">|&gt;</span></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> x, <span class="at">color =</span> outcome)) <span class="sc">+</span></span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stat_ecdf</span>(<span class="at">linewidth =</span> <span class="fl">1.2</span>) <span class="sc">+</span></span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_color_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">"Win"</span> <span class="ot">=</span> <span class="st">"#4C72B0"</span>, <span class="st">"Loss"</span> <span class="ot">=</span> <span class="st">"#C44E52"</span>)) <span class="sc">+</span></span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_continuous</span>(<span class="at">labels =</span> \(x) <span class="fu">ifelse</span>(<span class="fu">abs</span>(x) <span class="sc">&gt;=</span> <span class="dv">1000</span>, <span class="fu">paste0</span>(x <span class="sc">/</span> <span class="dv">1000</span>, <span class="st">"k"</span>), <span class="fu">as.character</span>(x))) <span class="sc">+</span></span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_y_continuous</span>(<span class="at">labels =</span> scales<span class="sc">::</span>percent) <span class="sc">+</span></span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>variable, <span class="at">scales =</span> <span class="st">"free_x"</span>) <span class="sc">+</span></span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">11</span>) <span class="sc">+</span></span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">strip.text =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">11</span>), <span class="at">aspect.ratio =</span> <span class="dv">1</span>) <span class="sc">+</span></span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"ECDF of Key Variables by Outcome"</span>, <span class="at">x =</span> <span class="cn">NULL</span>, <span class="at">y =</span> <span class="st">"Cumulative Proportion"</span>, <span class="at">color =</span> <span class="cn">NULL</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="league_games_files/figure-html/unnamed-chunk-8-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>To test whether the separation between the Win and Loss gold difference curves is statistically significant, a two-sample Kolmogorov-Smirnov test was applied. The KS test is non-parametric and measures the maximum distance between two empirical cumulative distribution functions, making it well suited for this data since it requires no normality assumption.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"KS test — Gold Difference (Win vs Loss)</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>KS test — Gold Difference (Win vs Loss)</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"D ="</span>, <span class="fu">round</span>(gold_ks<span class="sc">$</span>statistic, <span class="dv">3</span>), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>D = 0.947 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"p-value ="</span>, <span class="fu">format</span>(gold_ks<span class="sc">$</span>p.value, <span class="at">scientific =</span> <span class="cn">TRUE</span>, <span class="at">digits =</span> <span class="dv">3</span>), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>p-value = 0e+00 </code></pre>
+</div>
+</div>
+<p>A D statistic close to 1 indicates near-complete separation between the two distributions, while a value near 0 indicates they are indistinguishable. The near-zero p-value confirms the separation visible in the chart is not due to chance — teams with a positive gold difference win at a dramatically higher rate.</p>
+</section>
+<section id="personal-match-history" class="level2">
+<h2 class="anchored" data-anchor-id="personal-match-history">Personal Match History</h2>
+<p>Fetches all ranked solo/duo games from the Riot API (EUW) for the account <strong>tsilo#EUW</strong>.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(httr)</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>riot_get <span class="ot">&lt;-</span> <span class="cf">function</span>(url) {</span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>  resp <span class="ot">&lt;-</span> <span class="fu">GET</span>(url, <span class="fu">add_headers</span>(<span class="st">"X-Riot-Token"</span> <span class="ot">=</span> <span class="fu">fromJSON</span>(<span class="st">".kaggle/riot.json"</span>)<span class="sc">$</span>key))</span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="fu">status_code</span>(resp) <span class="sc">!=</span> <span class="dv">200</span>) <span class="fu">stop</span>(<span class="st">"Riot API error: "</span>, <span class="fu">status_code</span>(resp))</span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">content</span>(resp, <span class="at">as =</span> <span class="st">"parsed"</span>)</span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a>puuid <span class="ot">&lt;-</span> <span class="fu">riot_get</span>(<span class="st">"https://europe.api.riotgames.com/riot/account/v1/accounts/by-riot-id/tsilo/EUW"</span>)<span class="sc">$</span>puuid</span>
+<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-11"><a href="#cb21-11" aria-hidden="true" tabindex="-1"></a>match_ids <span class="ot">&lt;-</span> {</span>
+<span id="cb21-12"><a href="#cb21-12" aria-hidden="true" tabindex="-1"></a>  ids <span class="ot">&lt;-</span> <span class="fu">c</span>(); start <span class="ot">&lt;-</span> <span class="dv">0</span></span>
+<span id="cb21-13"><a href="#cb21-13" aria-hidden="true" tabindex="-1"></a>  <span class="cf">repeat</span> {</span>
+<span id="cb21-14"><a href="#cb21-14" aria-hidden="true" tabindex="-1"></a>    batch <span class="ot">&lt;-</span> <span class="fu">unlist</span>(<span class="fu">riot_get</span>(<span class="fu">paste0</span>(</span>
+<span id="cb21-15"><a href="#cb21-15" aria-hidden="true" tabindex="-1"></a>      <span class="st">"https://europe.api.riotgames.com/lol/match/v5/matches/by-puuid/"</span>, puuid,</span>
+<span id="cb21-16"><a href="#cb21-16" aria-hidden="true" tabindex="-1"></a>      <span class="st">"/ids?queue=420&amp;start="</span>, start, <span class="st">"&amp;count=100"</span></span>
+<span id="cb21-17"><a href="#cb21-17" aria-hidden="true" tabindex="-1"></a>    )))</span>
+<span id="cb21-18"><a href="#cb21-18" aria-hidden="true" tabindex="-1"></a>    ids <span class="ot">&lt;-</span> <span class="fu">c</span>(ids, batch); <span class="fu">Sys.sleep</span>(<span class="fl">1.2</span>)</span>
+<span id="cb21-19"><a href="#cb21-19" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (<span class="fu">length</span>(batch) <span class="sc">&lt;</span> <span class="dv">100</span>) <span class="cf">break</span></span>
+<span id="cb21-20"><a href="#cb21-20" aria-hidden="true" tabindex="-1"></a>    start <span class="ot">&lt;-</span> start <span class="sc">+</span> <span class="dv">100</span></span>
+<span id="cb21-21"><a href="#cb21-21" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb21-22"><a href="#cb21-22" aria-hidden="true" tabindex="-1"></a>  ids</span>
+<span id="cb21-23"><a href="#cb21-23" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb21-24"><a href="#cb21-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-25"><a href="#cb21-25" aria-hidden="true" tabindex="-1"></a>n <span class="ot">&lt;-</span> <span class="fu">length</span>(match_ids)</span>
+<span id="cb21-26"><a href="#cb21-26" aria-hidden="true" tabindex="-1"></a>raw_matches <span class="ot">&lt;-</span> <span class="fu">vector</span>(<span class="st">"list"</span>, n)</span>
+<span id="cb21-27"><a href="#cb21-27" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="fu">seq_len</span>(n)) {</span>
+<span id="cb21-28"><a href="#cb21-28" aria-hidden="true" tabindex="-1"></a>  raw_matches[[i]] <span class="ot">&lt;-</span> <span class="fu">tryCatch</span>({</span>
+<span id="cb21-29"><a href="#cb21-29" aria-hidden="true" tabindex="-1"></a>    d <span class="ot">&lt;-</span> <span class="fu">riot_get</span>(<span class="fu">paste0</span>(<span class="st">"https://europe.api.riotgames.com/lol/match/v5/matches/"</span>, match_ids[i]))</span>
+<span id="cb21-30"><a href="#cb21-30" aria-hidden="true" tabindex="-1"></a>    <span class="fu">Sys.sleep</span>(<span class="fl">0.1</span>)</span>
+<span id="cb21-31"><a href="#cb21-31" aria-hidden="true" tabindex="-1"></a>    p <span class="ot">&lt;-</span> d<span class="sc">$</span>info<span class="sc">$</span>participants[[<span class="fu">which</span>(<span class="fu">sapply</span>(d<span class="sc">$</span>info<span class="sc">$</span>participants, \(x) x<span class="sc">$</span>puuid) <span class="sc">==</span> puuid)]]</span>
+<span id="cb21-32"><a href="#cb21-32" aria-hidden="true" tabindex="-1"></a>    my_team   <span class="ot">&lt;-</span> p<span class="sc">$</span>teamId</span>
+<span id="cb21-33"><a href="#cb21-33" aria-hidden="true" tabindex="-1"></a>    my_gold   <span class="ot">&lt;-</span> <span class="fu">sum</span>(<span class="fu">sapply</span>(<span class="fu">Filter</span>(\(x) x<span class="sc">$</span>teamId <span class="sc">==</span> my_team, d<span class="sc">$</span>info<span class="sc">$</span>participants), \(x) x<span class="sc">$</span>goldEarned))</span>
+<span id="cb21-34"><a href="#cb21-34" aria-hidden="true" tabindex="-1"></a>    opp_gold  <span class="ot">&lt;-</span> <span class="fu">sum</span>(<span class="fu">sapply</span>(<span class="fu">Filter</span>(\(x) x<span class="sc">$</span>teamId <span class="sc">!=</span> my_team, d<span class="sc">$</span>info<span class="sc">$</span>participants), \(x) x<span class="sc">$</span>goldEarned))</span>
+<span id="cb21-35"><a href="#cb21-35" aria-hidden="true" tabindex="-1"></a>    my_kills  <span class="ot">&lt;-</span> <span class="fu">sum</span>(<span class="fu">sapply</span>(<span class="fu">Filter</span>(\(x) x<span class="sc">$</span>teamId <span class="sc">==</span> my_team, d<span class="sc">$</span>info<span class="sc">$</span>participants), \(x) x<span class="sc">$</span>kills))</span>
+<span id="cb21-36"><a href="#cb21-36" aria-hidden="true" tabindex="-1"></a>    opp_kills <span class="ot">&lt;-</span> <span class="fu">sum</span>(<span class="fu">sapply</span>(<span class="fu">Filter</span>(\(x) x<span class="sc">$</span>teamId <span class="sc">!=</span> my_team, d<span class="sc">$</span>info<span class="sc">$</span>participants), \(x) x<span class="sc">$</span>kills))</span>
+<span id="cb21-37"><a href="#cb21-37" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tibble</span>(<span class="at">matchId =</span> match_ids[i],</span>
+<span id="cb21-38"><a href="#cb21-38" aria-hidden="true" tabindex="-1"></a>           <span class="at">date         =</span> <span class="fu">as.POSIXct</span>(d<span class="sc">$</span>info<span class="sc">$</span>gameStartTimestamp <span class="sc">/</span> <span class="dv">1000</span>, <span class="at">origin =</span> <span class="st">"1970-01-01"</span>),</span>
+<span id="cb21-39"><a href="#cb21-39" aria-hidden="true" tabindex="-1"></a>           <span class="at">championName =</span> p<span class="sc">$</span>championName, <span class="at">win =</span> p<span class="sc">$</span>win,</span>
+<span id="cb21-40"><a href="#cb21-40" aria-hidden="true" tabindex="-1"></a>           <span class="at">kills =</span> p<span class="sc">$</span>kills, <span class="at">deaths =</span> p<span class="sc">$</span>deaths, <span class="at">assists =</span> p<span class="sc">$</span>assists,</span>
+<span id="cb21-41"><a href="#cb21-41" aria-hidden="true" tabindex="-1"></a>           <span class="at">kda          =</span> (p<span class="sc">$</span>kills <span class="sc">+</span> p<span class="sc">$</span>assists) <span class="sc">/</span> <span class="fu">max</span>(p<span class="sc">$</span>deaths, <span class="dv">1</span>),</span>
+<span id="cb21-42"><a href="#cb21-42" aria-hidden="true" tabindex="-1"></a>           <span class="at">goldEarned   =</span> p<span class="sc">$</span>goldEarned, <span class="at">visionScore =</span> p<span class="sc">$</span>visionScore,</span>
+<span id="cb21-43"><a href="#cb21-43" aria-hidden="true" tabindex="-1"></a>           <span class="at">gameDuration =</span> d<span class="sc">$</span>info<span class="sc">$</span>gameDuration <span class="sc">/</span> <span class="dv">60</span>,</span>
+<span id="cb21-44"><a href="#cb21-44" aria-hidden="true" tabindex="-1"></a>           <span class="at">goldDiff     =</span> (my_gold <span class="sc">-</span> opp_gold) <span class="sc">/</span> <span class="dv">1000</span>,</span>
+<span id="cb21-45"><a href="#cb21-45" aria-hidden="true" tabindex="-1"></a>           <span class="at">killsDiff    =</span> my_kills <span class="sc">-</span> opp_kills)</span>
+<span id="cb21-46"><a href="#cb21-46" aria-hidden="true" tabindex="-1"></a>  }, <span class="at">error =</span> <span class="cf">function</span>(e) <span class="cn">NULL</span>)</span>
+<span id="cb21-47"><a href="#cb21-47" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb21-48"><a href="#cb21-48" aria-hidden="true" tabindex="-1"></a>tsilo_matches <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(<span class="fu">compact</span>(raw_matches))</span>
+<span id="cb21-49"><a href="#cb21-49" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-50"><a href="#cb21-50" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(tsilo_matches) <span class="sc">|&gt;</span></span>
+<span id="cb21-51"><a href="#cb21-51" aria-hidden="true" tabindex="-1"></a>  <span class="fu">gt</span>()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div id="erbpubfcfb" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#erbpubfcfb table {
+  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#erbpubfcfb thead, #erbpubfcfb tbody, #erbpubfcfb tfoot, #erbpubfcfb tr, #erbpubfcfb td, #erbpubfcfb th {
+  border-style: none;
+}
+
+#erbpubfcfb p {
+  margin: 0;
+  padding: 0;
+}
+
+#erbpubfcfb .gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#erbpubfcfb .gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#erbpubfcfb .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#erbpubfcfb .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#erbpubfcfb .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#erbpubfcfb .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#erbpubfcfb .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#erbpubfcfb .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#erbpubfcfb .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#erbpubfcfb .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#erbpubfcfb .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#erbpubfcfb .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#erbpubfcfb .gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#erbpubfcfb .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#erbpubfcfb .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#erbpubfcfb .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#erbpubfcfb .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#erbpubfcfb .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#erbpubfcfb .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#erbpubfcfb .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#erbpubfcfb .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#erbpubfcfb .gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#erbpubfcfb .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#erbpubfcfb .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#erbpubfcfb .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#erbpubfcfb .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#erbpubfcfb .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#erbpubfcfb .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#erbpubfcfb .gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#erbpubfcfb .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#erbpubfcfb .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#erbpubfcfb .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#erbpubfcfb .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#erbpubfcfb .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#erbpubfcfb .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#erbpubfcfb .gt_left {
+  text-align: left;
+}
+
+#erbpubfcfb .gt_center {
+  text-align: center;
+}
+
+#erbpubfcfb .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#erbpubfcfb .gt_font_normal {
+  font-weight: normal;
+}
+
+#erbpubfcfb .gt_font_bold {
+  font-weight: bold;
+}
+
+#erbpubfcfb .gt_font_italic {
+  font-style: italic;
+}
+
+#erbpubfcfb .gt_super {
+  font-size: 65%;
+}
+
+#erbpubfcfb .gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#erbpubfcfb .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#erbpubfcfb .gt_indent_1 {
+  text-indent: 5px;
+}
+
+#erbpubfcfb .gt_indent_2 {
+  text-indent: 10px;
+}
+
+#erbpubfcfb .gt_indent_3 {
+  text-indent: 15px;
+}
+
+#erbpubfcfb .gt_indent_4 {
+  text-indent: 20px;
+}
+
+#erbpubfcfb .gt_indent_5 {
+  text-indent: 25px;
+}
+
+#erbpubfcfb .katex-display {
+  display: inline-flex !important;
+  margin-bottom: 0.75em !important;
+}
+
+#erbpubfcfb div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+  height: 0px !important;
+}
+</style>
+
+<table class="gt_table caption-top table table-sm table-striped small" data-quarto-bootstrap="false">
+<thead>
+<tr class="gt_col_headings header">
+<th id="matchId" class="gt_col_heading gt_columns_bottom_border gt_left" data-quarto-table-cell-role="th" scope="col">matchId</th>
+<th id="date" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">date</th>
+<th id="championName" class="gt_col_heading gt_columns_bottom_border gt_left" data-quarto-table-cell-role="th" scope="col">championName</th>
+<th id="win" class="gt_col_heading gt_columns_bottom_border gt_center" data-quarto-table-cell-role="th" scope="col">win</th>
+<th id="kills" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">kills</th>
+<th id="deaths" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">deaths</th>
+<th id="assists" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">assists</th>
+<th id="kda" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">kda</th>
+<th id="goldEarned" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">goldEarned</th>
+<th id="visionScore" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">visionScore</th>
+<th id="gameDuration" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">gameDuration</th>
+<th id="goldDiff" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">goldDiff</th>
+<th id="killsDiff" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">killsDiff</th>
+</tr>
+</thead>
+<tbody class="gt_table_body">
+<tr class="odd">
+<td class="gt_row gt_left" headers="matchId">EUW1_7894511919</td>
+<td class="gt_row gt_right" headers="date">2026-06-21 15:16:43.771</td>
+<td class="gt_row gt_left" headers="championName">Sett</td>
+<td class="gt_row gt_center" headers="win">TRUE</td>
+<td class="gt_row gt_right" headers="kills">14</td>
+<td class="gt_row gt_right" headers="deaths">2</td>
+<td class="gt_row gt_right" headers="assists">14</td>
+<td class="gt_row gt_right" headers="kda">14.00</td>
+<td class="gt_row gt_right" headers="goldEarned">16463</td>
+<td class="gt_row gt_right" headers="visionScore">18</td>
+<td class="gt_row gt_right" headers="gameDuration">28.81667</td>
+<td class="gt_row gt_right" headers="goldDiff">16.058</td>
+<td class="gt_row gt_right" headers="killsDiff">22</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="matchId">EUW1_7894112733</td>
+<td class="gt_row gt_right" headers="date">2026-06-21 01:36:21.395</td>
+<td class="gt_row gt_left" headers="championName">Sett</td>
+<td class="gt_row gt_center" headers="win">TRUE</td>
+<td class="gt_row gt_right" headers="kills">0</td>
+<td class="gt_row gt_right" headers="deaths">4</td>
+<td class="gt_row gt_right" headers="assists">7</td>
+<td class="gt_row gt_right" headers="kda">1.75</td>
+<td class="gt_row gt_right" headers="goldEarned">8088</td>
+<td class="gt_row gt_right" headers="visionScore">13</td>
+<td class="gt_row gt_right" headers="gameDuration">24.73333</td>
+<td class="gt_row gt_right" headers="goldDiff">9.327</td>
+<td class="gt_row gt_right" headers="killsDiff">12</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="matchId">EUW1_7893706196</td>
+<td class="gt_row gt_right" headers="date">2026-06-20 19:47:34.36</td>
+<td class="gt_row gt_left" headers="championName">Jax</td>
+<td class="gt_row gt_center" headers="win">FALSE</td>
+<td class="gt_row gt_right" headers="kills">4</td>
+<td class="gt_row gt_right" headers="deaths">8</td>
+<td class="gt_row gt_right" headers="assists">8</td>
+<td class="gt_row gt_right" headers="kda">1.50</td>
+<td class="gt_row gt_right" headers="goldEarned">14552</td>
+<td class="gt_row gt_right" headers="visionScore">27</td>
+<td class="gt_row gt_right" headers="gameDuration">38.71667</td>
+<td class="gt_row gt_right" headers="goldDiff">-5.906</td>
+<td class="gt_row gt_right" headers="killsDiff">-3</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="matchId">EUW1_7893389786</td>
+<td class="gt_row gt_right" headers="date">2026-06-20 14:49:20.853</td>
+<td class="gt_row gt_left" headers="championName">Kayn</td>
+<td class="gt_row gt_center" headers="win">FALSE</td>
+<td class="gt_row gt_right" headers="kills">7</td>
+<td class="gt_row gt_right" headers="deaths">10</td>
+<td class="gt_row gt_right" headers="assists">14</td>
+<td class="gt_row gt_right" headers="kda">2.10</td>
+<td class="gt_row gt_right" headers="goldEarned">15254</td>
+<td class="gt_row gt_right" headers="visionScore">44</td>
+<td class="gt_row gt_right" headers="gameDuration">38.60000</td>
+<td class="gt_row gt_right" headers="goldDiff">-4.413</td>
+<td class="gt_row gt_right" headers="killsDiff">-4</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="matchId">EUW1_7889374337</td>
+<td class="gt_row gt_right" headers="date">2026-06-16 17:20:21.284</td>
+<td class="gt_row gt_left" headers="championName">Jax</td>
+<td class="gt_row gt_center" headers="win">FALSE</td>
+<td class="gt_row gt_right" headers="kills">4</td>
+<td class="gt_row gt_right" headers="deaths">10</td>
+<td class="gt_row gt_right" headers="assists">0</td>
+<td class="gt_row gt_right" headers="kda">0.40</td>
+<td class="gt_row gt_right" headers="goldEarned">9510</td>
+<td class="gt_row gt_right" headers="visionScore">16</td>
+<td class="gt_row gt_right" headers="gameDuration">29.03333</td>
+<td class="gt_row gt_right" headers="goldDiff">-6.588</td>
+<td class="gt_row gt_right" headers="killsDiff">-16</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="matchId">EUW1_7888937737</td>
+<td class="gt_row gt_right" headers="date">2026-06-16 01:00:34.995</td>
+<td class="gt_row gt_left" headers="championName">Sett</td>
+<td class="gt_row gt_center" headers="win">FALSE</td>
+<td class="gt_row gt_right" headers="kills">4</td>
+<td class="gt_row gt_right" headers="deaths">4</td>
+<td class="gt_row gt_right" headers="assists">1</td>
+<td class="gt_row gt_right" headers="kda">1.25</td>
+<td class="gt_row gt_right" headers="goldEarned">11262</td>
+<td class="gt_row gt_right" headers="visionScore">17</td>
+<td class="gt_row gt_right" headers="gameDuration">29.88333</td>
+<td class="gt_row gt_right" headers="goldDiff">-9.359</td>
+<td class="gt_row gt_right" headers="killsDiff">5</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<section id="kda" class="level3">
+<h3 class="anchored" data-anchor-id="kda">KDA</h3>
+<p>tsilo’s KDA distribution across all ranked games, with the average marked.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>tsilo_matches <span class="sc">|&gt;</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> kda)) <span class="sc">+</span></span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">bins =</span> <span class="dv">40</span>, <span class="at">fill =</span> <span class="st">"#4C72B0"</span>, <span class="at">color =</span> <span class="st">"white"</span>) <span class="sc">+</span></span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="fu">mean</span>(tsilo_matches<span class="sc">$</span>kda), <span class="at">color =</span> <span class="st">"#C44E52"</span>, <span class="at">linewidth =</span> <span class="fl">1.2</span>, <span class="at">linetype =</span> <span class="st">"dashed"</span>) <span class="sc">+</span></span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">annotate</span>(<span class="st">"text"</span>, <span class="at">x =</span> <span class="fu">mean</span>(tsilo_matches<span class="sc">$</span>kda), <span class="at">y =</span> <span class="cn">Inf</span>,</span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>           <span class="at">label =</span> <span class="fu">paste0</span>(<span class="st">"avg "</span>, <span class="fu">round</span>(<span class="fu">mean</span>(tsilo_matches<span class="sc">$</span>kda), <span class="dv">2</span>)),</span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a>           <span class="at">color =</span> <span class="st">"#C44E52"</span>, <span class="at">hjust =</span> <span class="sc">-</span><span class="fl">0.1</span>, <span class="at">vjust =</span> <span class="fl">1.5</span>, <span class="at">size =</span> <span class="dv">4</span>) <span class="sc">+</span></span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_continuous</span>(<span class="at">limits =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">15</span>), <span class="at">oob =</span> scales<span class="sc">::</span>squish) <span class="sc">+</span></span>
+<span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">14</span>) <span class="sc">+</span></span>
+<span id="cb22-10"><a href="#cb22-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"tsilo — KDA Distribution"</span>, <span class="at">x =</span> <span class="st">"KDA"</span>, <span class="at">y =</span> <span class="st">"Games"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="league_games_files/figure-html/unnamed-chunk-11-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="gold-kills-difference" class="level3">
+<h3 class="anchored" data-anchor-id="gold-kills-difference">Gold &amp; Kills Difference</h3>
+<p>ECDF of gold and kills difference by outcome for tsilo’s games. The green dashed line marks tsilo’s average across all games.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>tsilo_avgs <span class="ot">&lt;-</span> <span class="fu">tibble</span>(</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">variable =</span> <span class="fu">c</span>(<span class="st">"Gold Difference (k)"</span>, <span class="st">"Kills Difference"</span>),</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">x_avg    =</span> <span class="fu">c</span>(<span class="fu">mean</span>(tsilo_matches<span class="sc">$</span>goldDiff), <span class="fu">mean</span>(tsilo_matches<span class="sc">$</span>killsDiff))</span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a><span class="fu">bind_rows</span>(</span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a>  tsilo_matches <span class="sc">|&gt;</span> <span class="fu">mutate</span>(<span class="at">variable =</span> <span class="st">"Gold Difference (k)"</span>, <span class="at">x =</span> goldDiff),</span>
+<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a>  tsilo_matches <span class="sc">|&gt;</span> <span class="fu">mutate</span>(<span class="at">variable =</span> <span class="st">"Kills Difference"</span>,    <span class="at">x =</span> killsDiff)</span>
+<span id="cb23-9"><a href="#cb23-9" aria-hidden="true" tabindex="-1"></a>) <span class="sc">|&gt;</span></span>
+<span id="cb23-10"><a href="#cb23-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">outcome =</span> <span class="fu">ifelse</span>(win, <span class="st">"Win"</span>, <span class="st">"Loss"</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb23-11"><a href="#cb23-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> x, <span class="at">color =</span> outcome)) <span class="sc">+</span></span>
+<span id="cb23-12"><a href="#cb23-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stat_ecdf</span>(<span class="at">linewidth =</span> <span class="fl">1.2</span>) <span class="sc">+</span></span>
+<span id="cb23-13"><a href="#cb23-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">data =</span> tsilo_avgs, <span class="fu">aes</span>(<span class="at">xintercept =</span> x_avg), <span class="at">color =</span> <span class="st">"#2ca02c"</span>, <span class="at">linewidth =</span> <span class="fl">1.2</span>, <span class="at">linetype =</span> <span class="st">"dashed"</span>) <span class="sc">+</span></span>
+<span id="cb23-14"><a href="#cb23-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_text</span>(<span class="at">data =</span> tsilo_avgs, <span class="fu">aes</span>(<span class="at">x =</span> x_avg, <span class="at">y =</span> <span class="fl">0.05</span>, <span class="at">label =</span> <span class="fu">paste0</span>(<span class="st">"tsilo avg "</span>, <span class="fu">round</span>(x_avg, <span class="dv">1</span>))),</span>
+<span id="cb23-15"><a href="#cb23-15" aria-hidden="true" tabindex="-1"></a>            <span class="at">color =</span> <span class="st">"#2ca02c"</span>, <span class="at">hjust =</span> <span class="sc">-</span><span class="fl">0.1</span>, <span class="at">size =</span> <span class="fl">3.5</span>, <span class="at">inherit.aes =</span> <span class="cn">FALSE</span>) <span class="sc">+</span></span>
+<span id="cb23-16"><a href="#cb23-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_color_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">"Win"</span> <span class="ot">=</span> <span class="st">"#4C72B0"</span>, <span class="st">"Loss"</span> <span class="ot">=</span> <span class="st">"#C44E52"</span>)) <span class="sc">+</span></span>
+<span id="cb23-17"><a href="#cb23-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_y_continuous</span>(<span class="at">labels =</span> scales<span class="sc">::</span>percent) <span class="sc">+</span></span>
+<span id="cb23-18"><a href="#cb23-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>variable, <span class="at">scales =</span> <span class="st">"free_x"</span>) <span class="sc">+</span></span>
+<span id="cb23-19"><a href="#cb23-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">11</span>) <span class="sc">+</span></span>
+<span id="cb23-20"><a href="#cb23-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">strip.text =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">11</span>), <span class="at">aspect.ratio =</span> <span class="dv">1</span>) <span class="sc">+</span></span>
+<span id="cb23-21"><a href="#cb23-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"tsilo — Gold &amp; Kills Difference by Outcome"</span>, <span class="at">x =</span> <span class="cn">NULL</span>, <span class="at">y =</span> <span class="st">"Cumulative Proportion"</span>, <span class="at">color =</span> <span class="cn">NULL</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="league_games_files/figure-html/unnamed-chunk-12-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
